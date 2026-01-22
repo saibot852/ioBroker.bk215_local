@@ -1,53 +1,86 @@
 "use strict";
+/**
+ * ioBroker.bk215_local - src/protocol/parser.ts
+ *
+ * Stream parser for the bk215_local TCP protocol.
+ * The device often sends JSON objects back-to-back without newline framing.
+ */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.extractJsonObjects = extractJsonObjects;
-function extractJsonObjects(buffer) {
+exports.parseJsonStream = parseJsonStream;
+/**
+ * Parse one chunk of text and extract complete JSON objects.
+ *
+ * @param rx - The current receive buffer + new chunk as string
+ * @returns Parsed messages and remaining rest buffer
+ */
+function parseJsonStream(rx) {
     const messages = [];
-    let rx = buffer;
-    while (true) {
-        const start = rx.indexOf("{");
-        if (start < 0)
-            return { messages, rest: "" };
-        if (start > 0)
-            rx = rx.slice(start);
-        let depth = 0;
-        let inString = false;
-        let escape = false;
-        let end = -1;
-        for (let i = 0; i < rx.length; i++) {
-            const c = rx[i];
-            if (inString) {
-                if (escape)
-                    escape = false;
-                else if (c === "\\")
-                    escape = true;
-                else if (c === '"')
-                    inString = false;
+    // find first potential JSON object start
+    const start = rx.indexOf('{');
+    if (start < 0) {
+        return { messages, rest: '' };
+    }
+    // drop any garbage before first '{'
+    rx = rx.slice(start);
+    let inString = false;
+    let escape = false;
+    let depth = 0;
+    let objStart = 0;
+    for (let i = 0; i < rx.length; i++) {
+        const c = rx[i];
+        if (inString) {
+            if (escape) {
+                escape = false;
+                continue;
+            }
+            if (c === '\\') {
+                escape = true;
                 continue;
             }
             if (c === '"') {
-                inString = true;
-                continue;
+                inString = false;
             }
-            if (c === "{")
-                depth++;
-            else if (c === "}") {
+            continue;
+        }
+        // not in string
+        if (c === '"') {
+            inString = true;
+            continue;
+        }
+        if (c === '{') {
+            if (depth === 0) {
+                objStart = i;
+            }
+            depth++;
+            continue;
+        }
+        if (c === '}') {
+            if (depth > 0) {
                 depth--;
-                if (depth === 0) {
-                    end = i;
-                    break;
+            }
+            if (depth === 0) {
+                const raw = rx.slice(objStart, i + 1);
+                try {
+                    const msg = JSON.parse(raw);
+                    messages.push(msg);
+                }
+                catch {
+                    // ignore broken JSON fragments
                 }
             }
         }
-        if (end < 0)
-            return { messages, rest: rx }; // wait for more
-        const jsonStr = rx.slice(0, end + 1).trim();
-        rx = rx.slice(end + 1);
-        try {
-            messages.push(JSON.parse(jsonStr));
-        }
-        catch {
-            // ignore malformed
-        }
     }
+    // whatever is left after last complete object boundary
+    // if depth > 0, we have an incomplete JSON tail -> keep it
+    if (depth > 0) {
+        // keep from last object start to end
+        return { messages, rest: rx.slice(objStart) };
+    }
+    // depth == 0: we may still have garbage after last object; keep only from last '{' if any, else empty
+    const lastOpen = rx.lastIndexOf('{');
+    const lastClose = rx.lastIndexOf('}');
+    if (lastOpen > lastClose) {
+        return { messages, rest: rx.slice(lastOpen) };
+    }
+    return { messages, rest: '' };
 }

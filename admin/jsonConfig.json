@@ -10,7 +10,7 @@
           "type": "text",
           "label": "Device IP address",
           "placeholder": "192.168.178.137",
-          "tooltip": "IP address of the SunEnergyXT/BK215 device"
+          "tooltip": "IP address of the BK215 device"
         },
         "port": {
           "type": "number",
@@ -27,7 +27,7 @@
           "max": 20000,
           "step": 250,
           "default": 2000,
-          "tooltip": "Connection/command timeout in milliseconds (Python default is 2.0s)"
+          "tooltip": "Connection/command timeout in milliseconds"
         },
         "autoReconnect": {
           "type": "checkbox",
@@ -41,15 +41,6 @@
       "type": "panel",
       "label": "Behavior",
       "items": {
-"updateInterval": {
-      "type": "number",
-      "label": "Update interval (seconds)",
-      "tooltip": "Polling interval in seconds. 0 = only receive push updates from device.",
-      "min": 0,
-      "max": 3600,
-      "step": 1,
-      "default":30
-    },
         "readOnly": {
           "type": "checkbox",
           "label": "Read-only mode",

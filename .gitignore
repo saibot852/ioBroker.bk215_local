@@ -1,15 +1,17 @@
-/.idea
-/nbproject
-node_modules
-/.git
-/localNpmRepo/public
-/localNpmRepo/db
-/localNpmRepo/ioBroker
-/list.html
-/localNpmRepo/tools.js
-/repositories.njsproj
-/typings/
-/lib/checker.js
-/lib/package.json
-/event.json
-/package-lock.json
+# No dot-directories except github/vscode
+node_modules/
+build/
+dist/
+*.tgz
+.idea/
+.vscode/
+
+# npm package files
+iobroker.*.tgz
+
+Thumbs.db
+.commitinfo
+
+# i18n intermediate files
+admin/i18n/flat.txt
+admin/i18n/*/flat.txt

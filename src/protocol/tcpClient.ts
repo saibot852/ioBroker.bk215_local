@@ -1,130 +1,254 @@
-import * as net from "net";
-import type { DeviceMessage } from "./constants";
-import {
-  CODE_DATA_REPORT,
-  CODE_DATA_REPORT_ALT,
-  CODE_COMMAND_SET,
-  CODE_RESPONSE_ACK,
-  DEFAULT_TIMEOUT_SEC,
-} from "./constants";
-import { extractJsonObjects } from "./parser";
+/**
+ * ioBroker.bk215_local - src/protocol/tcpClient.ts
+ *
+ * TCP client for bk215_local/BK215 JSON protocol.
+ * - Connects via net.Socket
+ * - Sends handshake on connect: {"code":0x6052,"data":{}} + CRLF
+ * - Parses incoming stream as concatenated JSON objects (no newline framing)
+ */
 
+import net from 'net';
+import type { DeviceMessage } from './constants';
+import { parseJsonStream } from './parser';
+
+/**
+ * Callbacks for TCP client events.
+ */
 export type TcpClientCallbacks = {
-  onConnect: () => void;
-  onClose: () => void;
-  onError: (err: Error) => void;
-  onMessage: (msg: DeviceMessage) => void;
+	/**
+	 * Called when TCP connection is established.
+	 */
+	onConnect?: () => void;
+
+	/**
+	 * Called when TCP connection closes.
+	 */
+	onClose?: () => void;
+
+	/**
+	 * Called on socket error.
+	 *
+	 * @param err - The underlying socket error
+	 */
+	onError?: (err: Error) => void;
+
+	/**
+	 * Called for each parsed device message.
+	 *
+	 * @param msg - Parsed message from device
+	 */
+	onMessage?: (msg: DeviceMessage) => void;
 };
 
-export class SunEnergyXTTcpClient {
-  private socket: net.Socket | null = null;
-  private rx = "";
-  private connected = false;
+/**
+ * TCP client implementation for BK215 local protocol.
+ */
+export class bk215_localTcpClient {
+	private socket: net.Socket | null = null;
 
-  private reconnectTimer: NodeJS.Timeout | null = null;
-  private backoffMs = 2000;
+	private rx = '';
 
-  constructor(private cb: TcpClientCallbacks) {}
+	private reconnectTimer: NodeJS.Timeout | null = null;
 
-  public isConnected(): boolean {
-    return this.connected;
-  }
+	private callbacks: TcpClientCallbacks;
 
-public sendHandshake(): void {
-  if (!this.socket || this.socket.destroyed) return;
+	// connect-timeout only (separate from idle timeout!)
+	private connectTimer: NodeJS.Timeout | null = null;
 
-  // Handshake wie in Python: {"code":DATA_REPORT,"data":{}} + "\r\n"
-  const payload = JSON.stringify({ code: 0x6052, data: {} }) + "\r\n";
-  this.socket.write(payload, "ascii");
+	/**
+	 * Create a new TCP client.
+	 *
+	 * @param callbacks - Optional event callbacks
+	 */
+	public constructor(callbacks: TcpClientCallbacks = {}) {
+		this.callbacks = callbacks;
+	}
+
+	/**
+	 * Returns true if socket is connected.
+	 *
+	 * @returns True if connected, false otherwise
+	 */
+	public isConnected(): boolean {
+		return !!this.socket && !this.socket.destroyed;
+	}
+
+	/**
+	 * Connect to device.
+	 * timeoutMs is used as CONNECT timeout, not as idle timeout.
+	 *
+	 * @param host - Device IP/hostname
+	 * @param port - Device TCP port
+	 * @param timeoutMs - Socket timeout in milliseconds
+	 */
+	public connect(host: string, port: number, timeoutMs: number): void {
+		this.destroy();
+
+		const sock = new net.Socket();
+		this.socket = sock;
+
+		sock.setNoDelay(true);
+		sock.setTimeout(timeoutMs);
+
+		sock.on('connect', () => {
+			if (this.callbacks.onConnect) {
+				this.callbacks.onConnect();
+			}
+
+			this.sendMessage(
+				{
+					code: 0x6052,
+					data: {},
+				},
+				true,
+			);
+		});
+
+		sock.on('data', buf => {
+			this.rx += buf.toString('ascii');
+
+			const parsed = parseJsonStream(this.rx);
+			this.rx = parsed.rest;
+
+			for (const msg of parsed.messages) {
+				if (this.callbacks.onMessage) {
+					this.callbacks.onMessage(msg);
+				}
+			}
+		});
+
+		sock.on('timeout', () => {
+			// ignore (idle)
+		});
+
+		sock.on('close', () => {
+			this.socket = null;
+
+			if (this.callbacks.onClose) {
+				this.callbacks.onClose();
+			}
+		});
+
+		sock.on('error', err => {
+			if (this.callbacks.onError) {
+				this.callbacks.onError(err);
+			}
+		});
+
+		sock.connect(port, host);
+	}
+
+	/**
+	 * Send a handshake packet.
+	 */
+	public sendHandshake(): void {
+		this.sendMessage(
+			{
+				code: 0x6052,
+				data: {},
+			},
+			true,
+		);
+	}
+
+	/**
+	 * Send a command payload (0x6056).
+	 *
+	 * @param data - Field/value map to send to the device
+	 */
+	public sendCommand(data: Record<string, any>): void {
+		this.sendMessage(
+			{
+				code: 0x6056,
+				data,
+			},
+			false,
+		);
+	}
+
+	/**
+	 * Send any message to device.
+	 *
+	 * @param msg - Message object to send
+	 * @param crlf - Append CRLF after JSON payload
+	 */
+	public sendMessage(msg: DeviceMessage, crlf: boolean): void {
+		if (!this.socket || this.socket.destroyed) {
+			return;
+		}
+
+		const payload = `${JSON.stringify(msg)}${crlf ? '\r\n' : ''}`;
+		this.socket.write(payload, 'ascii');
+	}
+
+	/**
+	 * Schedule reconnect attempt.
+	 *
+	 * @param host - Device IP/hostname
+	 * @param port - Device TCP port
+	 * @param timeoutMs - Socket timeout in milliseconds
+	 * @param delayMs - Delay before reconnect attempt (ms)
+	 */
+	public scheduleReconnect(host: string, port: number, timeoutMs: number, delayMs = 5000): void {
+		this.clearReconnect();
+
+		this.reconnectTimer = setTimeout(() => {
+			this.connect(host, port, timeoutMs);
+		}, delayMs);
+	}
+
+	/**
+	 * Destroy socket and clear timers.
+	 */
+	public destroy(): void {
+		this.clearReconnect();
+		this.clearConnectTimer();
+		this.rx = '';
+
+		if (this.socket) {
+			this.socket.removeAllListeners();
+			try {
+				this.socket.destroy();
+			} catch {
+				// ignore
+			}
+			this.socket = null;
+		}
+	}
+
+	private clearReconnect(): void {
+		if (this.reconnectTimer) {
+			clearTimeout(this.reconnectTimer);
+			this.reconnectTimer = null;
+		}
+	}
+
+	private clearConnectTimer(): void {
+		if (this.connectTimer) {
+			clearTimeout(this.connectTimer);
+			this.connectTimer = null;
+		}
+	}
 }
 
-
-  public connect(host: string, port: number, timeoutMs: number): void {
-    this.destroy();
-
-    const sock = new net.Socket();
-    this.socket = sock;
-
-    sock.setNoDelay(true);
-    sock.setTimeout(timeoutMs);
-
-    sock.on("connect", () => {
-      this.connected = true;
-      this.backoffMs = 2000;
-      this.cb.onConnect();
-
-      // Handshake MUST have CRLF (like python)
-      this.send({ code: CODE_DATA_REPORT, data: {} }, true);
-    });
-
-    sock.on("data", (buf: Buffer) => {
-      // Device behaves like: 1 JSON per read, often without newline.
-      this.rx += buf.toString("ascii");
-      const { messages, rest } = extractJsonObjects(this.rx);
-      this.rx = rest;
-      for (const m of messages) this.cb.onMessage(m);
-    });
-
-    sock.on("timeout", () => {
-      // ignore - idle
-    });
-
-    sock.on("close", () => {
-      this.connected = false;
-      this.cb.onClose();
-    });
-
-    sock.on("error", (err) => {
-      this.cb.onError(err);
-    });
-
-    sock.connect(port, host);
-  }
-
-  public scheduleReconnect(host: string, port: number, timeoutMs: number): void {
-    if (this.reconnectTimer) return;
-    const delay = this.backoffMs;
-    this.backoffMs = Math.min(60000, Math.floor(this.backoffMs * 1.6));
-
-    this.reconnectTimer = setTimeout(() => {
-      this.reconnectTimer = null;
-      this.connect(host, port, timeoutMs);
-    }, delay);
-  }
-
-  public sendCommand(data: Record<string, any>): void {
-    this.send({ code: CODE_COMMAND_SET, data }, false);
-  }
-
-  public send(msg: DeviceMessage, crlf: boolean): void {
-    if (!this.socket) return;
-    const payload = JSON.stringify(msg) + (crlf ? "\r\n" : "");
-    this.socket.write(payload, "ascii");
-  }
-
-  public destroy(): void {
-    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
-    this.reconnectTimer = null;
-
-    this.connected = false;
-    this.rx = "";
-
-    if (this.socket) {
-      try {
-        this.socket.removeAllListeners();
-        this.socket.destroy();
-      } catch {
-        // ignore
-      }
-    }
-    this.socket = null;
-  }
-}
-
-// Helpers for callers:
-export function isDataReport(code: number): boolean {
-  return code === CODE_DATA_REPORT || code === CODE_DATA_REPORT_ALT;
-}
+/**
+ * Check whether a message code represents an ACK message.
+ * ACK codes are 0 (handshake ack) and 0x6057 (response ack).
+ *
+ * @param code - Message code from device
+ * @returns True if ACK, otherwise false
+ */
 export function isAck(code: number): boolean {
-  return code === CODE_RESPONSE_ACK || code === 0; // handshake ack is often code 0
+	return code === 0 || code === 0x6057;
+}
+
+/**
+ * Check whether a message code represents a data report.
+ * Data report codes seen are 0x6052 and 0x6055.
+ *
+ * @param code - Message code from device
+ * @returns True if data report, otherwise false
+ */
+export function isDataReport(code: number): boolean {
+	return code === 0x6052 || code === 0x6055;
 }

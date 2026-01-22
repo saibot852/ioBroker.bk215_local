@@ -1,9 +1,9 @@
 {
 	"cli": true,
 	"target": "directory",
-	"adapterName": "sunenergyxt",
-	"title": "sunenergyxt",
-	"description": "sunenergyxt Local mode",
+	"adapterName": "bk215_local",
+	"title": "bk215_local",
+	"description": "bk215_local Local mode",
 	"expert": "no",
 	"features": [
 		"adapter"

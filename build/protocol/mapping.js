@@ -1,60 +1,74 @@
 "use strict";
+/**
+ * ioBroker.bk215_local - src/protocol/mapping.ts
+ *
+ * Mapping between ioBroker state IDs and bk215_local device fields (tXXX keys).
+ */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.READ_STATE_MAP = exports.WRITE_FIELD_MAP = void 0;
 const constants_1 = require("./constants");
+/**
+ * Map from writable ioBroker state IDs to device field IDs.
+ */
 exports.WRITE_FIELD_MAP = {
-    "config.system_discharge_limit": constants_1.Field.SYSTEM_DISCHARGE_LIMIT,
-    "config.system_charge_limit": constants_1.Field.SYSTEM_CHARGE_LIMIT,
-    "config.system_charging_power": constants_1.Field.SYSTEM_CHARGING_POWER,
-    "config.home_discharge_cutoff": constants_1.Field.HOME_DISCHARGE_CUTOFF,
-    "config.car_discharge_cutoff": constants_1.Field.CAR_DISCHARGE_CUTOFF,
-    "config.battery_charge_cutoff": constants_1.Field.BATTERY_CHARGE_CUTOFF,
-    "config.idle_shutdown_time": constants_1.Field.IDLE_SHUTDOWN_TIME,
-    "config.low_battery_shutdown_time": constants_1.Field.LOW_BATTERY_SHUTDOWN_TIME,
-    "modes.local_mode": constants_1.Field.LOCAL_MODE,
-    "modes.battery_charging_mode": constants_1.Field.BATTERY_CHARGING_MODE,
-    "modes.car_charging_mode": constants_1.Field.CAR_CHARGING_MODE,
-    "modes.home_appliance_mode": constants_1.Field.HOME_APPLIANCE_MODE,
-    "modes.ac_active_mode": constants_1.Field.AC_ACTIVE_MODE,
+    'config.system_discharge_limit': constants_1.Field.SYSTEM_DISCHARGE_LIMIT,
+    'config.system_charge_limit': constants_1.Field.SYSTEM_CHARGE_LIMIT,
+    'config.system_charging_power': constants_1.Field.SYSTEM_CHARGING_POWER,
+    'config.home_discharge_cutoff': constants_1.Field.HOME_DISCHARGE_CUTOFF,
+    'config.car_discharge_cutoff': constants_1.Field.CAR_DISCHARGE_CUTOFF,
+    'config.battery_charge_cutoff': constants_1.Field.BATTERY_CHARGE_CUTOFF,
+    'config.idle_shutdown_time': constants_1.Field.IDLE_SHUTDOWN_TIME,
+    'config.low_battery_shutdown_time': constants_1.Field.LOW_BATTERY_SHUTDOWN_TIME,
+    'modes.local_mode': constants_1.Field.LOCAL_MODE,
+    'modes.battery_charging_mode': constants_1.Field.BATTERY_CHARGING_MODE,
+    'modes.car_charging_mode': constants_1.Field.CAR_CHARGING_MODE,
+    'modes.home_appliance_mode': constants_1.Field.HOME_APPLIANCE_MODE,
+    'modes.ac_active_mode': constants_1.Field.AC_ACTIVE_MODE,
 };
+/**
+ * List of fields we read from DATA_REPORT messages and write into ioBroker states.
+ */
 exports.READ_STATE_MAP = [
-    { stateId: "status.overall_soc", field: constants_1.Field.BATTERY_LEVEL, type: "number" },
-    { stateId: "status.main_soc", field: constants_1.Field.HEAD_STORAGE, type: "number" },
-    { stateId: "status.slave1_soc", field: constants_1.Field.EXPANSION_1, type: "number" },
-    { stateId: "status.slave2_soc", field: constants_1.Field.EXPANSION_2, type: "number" },
-    { stateId: "status.slave3_soc", field: constants_1.Field.EXPANSION_3, type: "number" },
-    { stateId: "status.slave4_soc", field: constants_1.Field.EXPANSION_4, type: "number" },
-    { stateId: "status.slave5_soc", field: constants_1.Field.EXPANSION_5, type: "number" },
-    { stateId: "status.slave6_soc", field: constants_1.Field.EXPANSION_6, type: "number" },
-    { stateId: "status.slave7_soc", field: constants_1.Field.EXPANSION_7, type: "number" },
-    { stateId: "status.main_bms_min", field: constants_1.Field.HEAD_HW_DISCHARGE_LIMIT, type: "number" },
-    { stateId: "status.main_bms_max", field: constants_1.Field.HEAD_HW_CHARGE_LIMIT, type: "number" },
-    { stateId: "status.slave1_bms_min", field: constants_1.Field.EXPANSION_1_HW_DISCHARGE, type: "number" },
-    { stateId: "status.slave1_bms_max", field: constants_1.Field.EXPANSION_1_HW_CHARGE, type: "number" },
-    { stateId: "status.slave2_bms_min", field: constants_1.Field.EXPANSION_2_HW_DISCHARGE, type: "number" },
-    { stateId: "status.slave2_bms_max", field: constants_1.Field.EXPANSION_2_HW_CHARGE, type: "number" },
-    { stateId: "status.slave3_bms_min", field: constants_1.Field.EXPANSION_3_HW_DISCHARGE, type: "number" },
-    { stateId: "status.slave3_bms_max", field: constants_1.Field.EXPANSION_3_HW_CHARGE, type: "number" },
-    { stateId: "status.slave4_bms_min", field: constants_1.Field.EXPANSION_4_HW_DISCHARGE, type: "number" },
-    { stateId: "status.slave4_bms_max", field: constants_1.Field.EXPANSION_4_HW_CHARGE, type: "number" },
-    { stateId: "status.slave5_bms_min", field: constants_1.Field.EXPANSION_5_HW_DISCHARGE, type: "number" },
-    { stateId: "status.slave5_bms_max", field: constants_1.Field.EXPANSION_5_HW_CHARGE, type: "number" },
-    { stateId: "status.slave6_bms_min", field: constants_1.Field.EXPANSION_6_HW_DISCHARGE, type: "number" },
-    { stateId: "status.slave6_bms_max", field: constants_1.Field.EXPANSION_6_HW_CHARGE, type: "number" },
-    { stateId: "status.slave7_bms_min", field: constants_1.Field.EXPANSION_7_HW_DISCHARGE, type: "number" },
-    { stateId: "status.slave7_bms_max", field: constants_1.Field.EXPANSION_7_HW_CHARGE, type: "number" },
-    // echoes
-    { stateId: "config.system_discharge_limit", field: constants_1.Field.SYSTEM_DISCHARGE_LIMIT, type: "number" },
-    { stateId: "config.system_charge_limit", field: constants_1.Field.SYSTEM_CHARGE_LIMIT, type: "number" },
-    { stateId: "config.system_charging_power", field: constants_1.Field.SYSTEM_CHARGING_POWER, type: "number" },
-    { stateId: "config.home_discharge_cutoff", field: constants_1.Field.HOME_DISCHARGE_CUTOFF, type: "number" },
-    { stateId: "config.car_discharge_cutoff", field: constants_1.Field.CAR_DISCHARGE_CUTOFF, type: "number" },
-    { stateId: "config.battery_charge_cutoff", field: constants_1.Field.BATTERY_CHARGE_CUTOFF, type: "number" },
-    { stateId: "config.idle_shutdown_time", field: constants_1.Field.IDLE_SHUTDOWN_TIME, type: "number" },
-    { stateId: "config.low_battery_shutdown_time", field: constants_1.Field.LOW_BATTERY_SHUTDOWN_TIME, type: "number" },
-    { stateId: "modes.local_mode", field: constants_1.Field.LOCAL_MODE, type: "boolean" },
-    { stateId: "modes.battery_charging_mode", field: constants_1.Field.BATTERY_CHARGING_MODE, type: "boolean" },
-    { stateId: "modes.car_charging_mode", field: constants_1.Field.CAR_CHARGING_MODE, type: "boolean" },
-    { stateId: "modes.home_appliance_mode", field: constants_1.Field.HOME_APPLIANCE_MODE, type: "boolean" },
-    { stateId: "modes.ac_active_mode", field: constants_1.Field.AC_ACTIVE_MODE, type: "boolean" },
+    // Battery SOC
+    { stateId: 'status.overall_soc', field: constants_1.Field.BATTERY_LEVEL, type: 'number' },
+    { stateId: 'status.main_soc', field: constants_1.Field.HEAD_STORAGE, type: 'number' },
+    { stateId: 'status.slave1_soc', field: constants_1.Field.EXPANSION_1, type: 'number' },
+    { stateId: 'status.slave2_soc', field: constants_1.Field.EXPANSION_2, type: 'number' },
+    { stateId: 'status.slave3_soc', field: constants_1.Field.EXPANSION_3, type: 'number' },
+    { stateId: 'status.slave4_soc', field: constants_1.Field.EXPANSION_4, type: 'number' },
+    { stateId: 'status.slave5_soc', field: constants_1.Field.EXPANSION_5, type: 'number' },
+    { stateId: 'status.slave6_soc', field: constants_1.Field.EXPANSION_6, type: 'number' },
+    { stateId: 'status.slave7_soc', field: constants_1.Field.EXPANSION_7, type: 'number' },
+    // BMS / Hardware limits
+    { stateId: 'status.main_bms_min', field: constants_1.Field.HEAD_HW_DISCHARGE_LIMIT, type: 'number' },
+    { stateId: 'status.main_bms_max', field: constants_1.Field.HEAD_HW_CHARGE_LIMIT, type: 'number' },
+    { stateId: 'status.slave1_bms_min', field: constants_1.Field.EXPANSION_1_HW_DISCHARGE, type: 'number' },
+    { stateId: 'status.slave1_bms_max', field: constants_1.Field.EXPANSION_1_HW_CHARGE, type: 'number' },
+    { stateId: 'status.slave2_bms_min', field: constants_1.Field.EXPANSION_2_HW_DISCHARGE, type: 'number' },
+    { stateId: 'status.slave2_bms_max', field: constants_1.Field.EXPANSION_2_HW_CHARGE, type: 'number' },
+    { stateId: 'status.slave3_bms_min', field: constants_1.Field.EXPANSION_3_HW_DISCHARGE, type: 'number' },
+    { stateId: 'status.slave3_bms_max', field: constants_1.Field.EXPANSION_3_HW_CHARGE, type: 'number' },
+    { stateId: 'status.slave4_bms_min', field: constants_1.Field.EXPANSION_4_HW_DISCHARGE, type: 'number' },
+    { stateId: 'status.slave4_bms_max', field: constants_1.Field.EXPANSION_4_HW_CHARGE, type: 'number' },
+    { stateId: 'status.slave5_bms_min', field: constants_1.Field.EXPANSION_5_HW_DISCHARGE, type: 'number' },
+    { stateId: 'status.slave5_bms_max', field: constants_1.Field.EXPANSION_5_HW_CHARGE, type: 'number' },
+    { stateId: 'status.slave6_bms_min', field: constants_1.Field.EXPANSION_6_HW_DISCHARGE, type: 'number' },
+    { stateId: 'status.slave6_bms_max', field: constants_1.Field.EXPANSION_6_HW_CHARGE, type: 'number' },
+    { stateId: 'status.slave7_bms_min', field: constants_1.Field.EXPANSION_7_HW_DISCHARGE, type: 'number' },
+    { stateId: 'status.slave7_bms_max', field: constants_1.Field.EXPANSION_7_HW_CHARGE, type: 'number' },
+    // Config values (some firmwares include them in reports)
+    { stateId: 'config.system_discharge_limit', field: constants_1.Field.SYSTEM_DISCHARGE_LIMIT, type: 'number' },
+    { stateId: 'config.system_charge_limit', field: constants_1.Field.SYSTEM_CHARGE_LIMIT, type: 'number' },
+    { stateId: 'config.system_charging_power', field: constants_1.Field.SYSTEM_CHARGING_POWER, type: 'number' },
+    { stateId: 'config.home_discharge_cutoff', field: constants_1.Field.HOME_DISCHARGE_CUTOFF, type: 'number' },
+    { stateId: 'config.car_discharge_cutoff', field: constants_1.Field.CAR_DISCHARGE_CUTOFF, type: 'number' },
+    { stateId: 'config.battery_charge_cutoff', field: constants_1.Field.BATTERY_CHARGE_CUTOFF, type: 'number' },
+    { stateId: 'config.idle_shutdown_time', field: constants_1.Field.IDLE_SHUTDOWN_TIME, type: 'number' },
+    { stateId: 'config.low_battery_shutdown_time', field: constants_1.Field.LOW_BATTERY_SHUTDOWN_TIME, type: 'number' },
+    // Modes (some firmwares include them in reports)
+    { stateId: 'modes.local_mode', field: constants_1.Field.LOCAL_MODE, type: 'boolean' },
+    { stateId: 'modes.battery_charging_mode', field: constants_1.Field.BATTERY_CHARGING_MODE, type: 'boolean' },
+    { stateId: 'modes.car_charging_mode', field: constants_1.Field.CAR_CHARGING_MODE, type: 'boolean' },
+    { stateId: 'modes.home_appliance_mode', field: constants_1.Field.HOME_APPLIANCE_MODE, type: 'boolean' },
+    { stateId: 'modes.ac_active_mode', field: constants_1.Field.AC_ACTIVE_MODE, type: 'boolean' },
 ];

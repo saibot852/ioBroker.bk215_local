@@ -1,26 +1,14 @@
 {
-    "compilerOptions": {
-        "module": "esnext",
-        "target": "esnext",
-        "moduleResolution": "node",
-        "baseUrl": "./",
-        "allowSyntheticDefaultImports": true,
-        "checkJs": false,
-        "noEmit": false,
-        "outDir": "./build",
-        "sourceMap": true,
-        "sourceRoot": "./src",
-        "noImplicitAny": true,
-        "skipLibCheck": true,
-        "lib": ["es2018", "DOM"],
-        "jsx": "react",
-        "types": ["@iobroker/types"],
-        "paths": {
-            "@/*": ["./src/*"],
-        }
-    },
-    "exclude": ["**/node_modules", "**/build", "adminWww/**"],
-    "include": ["**/*.js", "**/*.ts", "**/*.d.ts",
-        "eslint.config.mjs"
-    ],
+  "compilerOptions": {
+    "target": "ES2021",
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "outDir": "build",
+    "rootDir": "src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*.ts"]
 }
+

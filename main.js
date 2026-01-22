@@ -11,14 +11,14 @@ const utils = require('@iobroker/adapter-core');
 // Load your modules here, e.g.:
 // const fs = require('fs');
 
-class Sunenergyxt extends utils.Adapter {
+class bk215_local extends utils.Adapter {
 	/**
 	 * @param {Partial<utils.AdapterOptions>} [options] - Adapter options
 	 */
 	constructor(options) {
 		super({
 			...options,
-			name: 'sunenergyxt',
+			name: 'bk215_local',
 		});
 		this.on('ready', this.onReady.bind(this));
 		this.on('stateChange', this.onStateChange.bind(this));
@@ -172,8 +172,8 @@ if (require.main !== module) {
 	/**
 	 * @param {Partial<utils.AdapterOptions>} [options] - Adapter options
 	 */
-	module.exports = options => new Sunenergyxt(options);
+	module.exports = options => new bk215_local(options);
 } else {
 	// otherwise start the instance directly
-	new Sunenergyxt();
+	new bk215_local();
 }
