@@ -1,0 +1,95 @@
+{
+	"common": {
+"title": "SunEnergyXT",
+"mode": "daemon",
+    "platform": "Javascript/Node.js",
+"main": "build/main.js",
+		"name": "sunenergyxt",
+		"version": "1.0.0",
+		"news": {
+			"1.0.0": {
+				"en": "initial release",
+				"de": "Erstveröffentlichung",
+				"ru": "Начальная версия",
+				"pt": "lançamento inicial",
+				"nl": "Eerste uitgave",
+				"fr": "Première version",
+				"it": "Versione iniziale",
+				"es": "Versión inicial",
+				"pl": "Pierwsze wydanie",
+				"uk": "Початкова версія",
+				"zh-cn": "首次出版"
+			}
+		},
+		"titleLang": {
+			"en": "sunenergyxt",
+			"de": "sunenergyxt",
+			"ru": "Sunenergyxt",
+			"pt": "energia solar",
+			"nl": "zonneenergiext",
+			"fr": "sunenergyxt",
+			"it": "sunenergyxt",
+			"es": "energiasolana",
+			"pl": "energia słonecznaxt",
+			"uk": "sunenergyxt",
+			"zh-cn": "太阳能xt"
+		},
+		"desc": {
+			"en": "sunenergyxt Local mode",
+			"de": "sunenergyxt Lokaler Modus",
+			"ru": "sunenergyxt Локальный режим",
+			"pt": "sunenergyxt Modo local",
+			"nl": "sunenergyxt Lokale modus",
+			"fr": "sunenergyxt Mode local",
+			"it": "sunenergyxt Modalità locale",
+			"es": "modo local sunenergyxt",
+			"pl": "sunenergyxt Tryb lokalny",
+			"uk": "sunenergyxt Локальний режим",
+			"zh-cn": "sunenergyxt 本地模式"
+		},
+		"authors": [
+			"saibot852 <petrasch.tobias@t-online.de>"
+		],
+		"keywords": [
+			"template",
+			"automation",
+			"IoT",
+			"integration"
+		],
+		"licenseInformation": {
+			"type": "free",
+			"license": "MIT"
+		},
+		"platform": "Javascript/Node.js",
+		"icon": "sunenergyxt.png",
+		"enabled": true,
+		"extIcon": "https://raw.githubusercontent.com/saibot852/ioBroker.sunenergyxt/main/admin/sunenergyxt.png",
+		"readme": "https://github.com/saibot852/ioBroker.sunenergyxt/blob/main/README.md",
+		"loglevel": "info",
+		"tier": 3,
+		"mode": "daemon",
+		"type": "household",
+		"compact": true,
+		"connectionType": "local",
+		"dataSource": "poll",
+		"adminUI": {
+			"config": "json"
+		},
+		"dependencies": [
+			{
+				"js-controller": ">=6.0.11"
+			}
+		],
+		"globalDependencies": [
+			{
+				"admin": ">=7.0.23"
+			}
+		]
+	},
+	"native": {
+		"option1": true,
+		"option2": "42"
+	},
+	"objects": [],
+	"instanceObjects": []
+}

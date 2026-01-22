@@ -1,0 +1,74 @@
+{
+  "i18n": true,
+  "type": "panel",
+  "items": {
+    "connection": {
+      "type": "panel",
+      "label": "Connection",
+      "items": {
+        "host": {
+          "type": "text",
+          "label": "Device IP address",
+          "placeholder": "192.168.178.137",
+          "tooltip": "IP address of the SunEnergyXT/BK215 device"
+        },
+        "port": {
+          "type": "number",
+          "label": "TCP port",
+          "min": 1,
+          "max": 65535,
+          "default": 8000,
+          "tooltip": "Default is 8000"
+        },
+        "timeout": {
+          "type": "number",
+          "label": "Socket timeout (ms)",
+          "min": 500,
+          "max": 20000,
+          "step": 250,
+          "default": 2000,
+          "tooltip": "Connection/command timeout in milliseconds (Python default is 2.0s)"
+        },
+        "autoReconnect": {
+          "type": "checkbox",
+          "label": "Auto reconnect",
+          "default": true,
+          "tooltip": "Automatically reconnect when the TCP connection is lost"
+        }
+      }
+    },
+    "behavior": {
+      "type": "panel",
+      "label": "Behavior",
+      "items": {
+"updateInterval": {
+      "type": "number",
+      "label": "Update interval (seconds)",
+      "tooltip": "Polling interval in seconds. 0 = only receive push updates from device.",
+      "min": 0,
+      "max": 3600,
+      "step": 1,
+      "default":30
+    },
+        "readOnly": {
+          "type": "checkbox",
+          "label": "Read-only mode",
+          "default": false,
+          "tooltip": "If enabled, the adapter will not send any commands"
+        },
+        "monitoringEnabled": {
+          "type": "checkbox",
+          "label": "Enable real-time monitoring",
+          "default": true,
+          "tooltip": "Use device push updates (DATA_REPORT)"
+        },
+        "debug": {
+          "type": "checkbox",
+          "label": "Enable debug logging",
+          "default": false,
+          "tooltip": "Store last raw message in status.raw_message"
+        }
+      }
+    }
+  }
+}

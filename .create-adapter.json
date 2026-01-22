@@ -1,0 +1,38 @@
+{
+	"cli": true,
+	"target": "directory",
+	"adapterName": "sunenergyxt",
+	"title": "sunenergyxt",
+	"description": "sunenergyxt Local mode",
+	"expert": "no",
+	"features": [
+		"adapter"
+	],
+	"adminFeatures": [],
+	"type": "household",
+	"startMode": "daemon",
+	"connectionType": "local",
+	"dataSource": "poll",
+	"connectionIndicator": "no",
+	"language": "JavaScript",
+	"nodeVersion": "20",
+	"adminUi": "json",
+	"tools": [
+		"ESLint",
+		"type checking"
+	],
+	"eslintConfig": "official",
+	"releaseScript": "yes",
+	"devServer": "local",
+	"indentation": "Tab",
+	"quotes": "single",
+	"authorName": "saibot852",
+	"authorGithub": "saibot852",
+	"authorEmail": "petrasch.tobias@t-online.de",
+	"gitRemoteProtocol": "HTTPS",
+	"gitCommit": "no",
+	"defaultBranch": "main",
+	"license": "MIT License",
+	"dependabot": "yes",
+	"creatorVersion": "3.1.2"
+}
