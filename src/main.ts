@@ -23,12 +23,21 @@ class bk215_localAdapter extends utils.Adapter {
 	private deviceHost = '';
 	private devicePort = DEFAULT_PORT;
 	private timeoutMs = Math.floor(DEFAULT_TIMEOUT_SEC * 1000);
+
 	private cfgReadOnly = false;
 	private cfgDebug = false;
+	private cfgAutoReconnect = true;
 
 	private pending = new Map<string, PendingCmd>();
 
 	private reconnectDelayMs = 5000;
+
+	// "connected" erst wenn erstes DATA_REPORT kam
+	private haveData = false;
+
+	// Watchdog: wenn keine DATA_REPORTs mehr kommen -> reconnect
+	private dataWatchdog: ReturnType<typeof setTimeout> | null = null;
+	private dataWatchdogMs = 60000;
 
 	public constructor(options: Partial<utils.AdapterOptions> = {}) {
 		super({
@@ -47,13 +56,21 @@ class bk215_localAdapter extends utils.Adapter {
 		this.deviceHost = String(cfg.host || '').trim();
 		this.devicePort = this.sanitizeNumber(cfg.port, DEFAULT_PORT, 1, 65535);
 		this.timeoutMs = this.sanitizeNumber(cfg.timeout, Math.floor(DEFAULT_TIMEOUT_SEC * 1000), 500, 600000);
+
 		this.cfgReadOnly = !!cfg.readOnly;
 		this.cfgDebug = !!cfg.debug;
 
+		// Admin Option: Auto reconnect (default true)
+		this.cfgAutoReconnect = cfg.autoReconnect !== false;
+
+		// Optional: Watchdog (kannst du später als Config machen)
+		this.dataWatchdogMs = 60000;
+
 		await ensureObjects(this);
 
-		// Standard ioBroker connection flag (ampel/rot-gruen)
+		// Standard ioBroker connection flag (Ampel/rot-gruen) – erst nach DATA_REPORT true
 		await this.safeSetState('info.connection', false);
+		//await this.safeSetState('info.connected', false);
 		await this.safeSetState('info.lastError', '');
 		await this.safeSetState('info.readOnly', this.cfgReadOnly);
 		await this.safeSetState('info.lastUpdate', 0);
@@ -73,6 +90,7 @@ class bk215_localAdapter extends utils.Adapter {
 		this.subscribeStates('modes.*');
 
 		this.reconnectDelayMs = 5000;
+		this.haveData = false;
 
 		this.tcp = new bk215_localTcpClient({
 			onConnect: () => {
@@ -101,6 +119,13 @@ class bk215_localAdapter extends utils.Adapter {
 			return;
 		}
 
+		if (!this.cfgAutoReconnect) {
+			if (this.cfgDebug) {
+				this.log.debug('AutoReconnect disabled -> not scheduling reconnect');
+			}
+			return;
+		}
+
 		// Backoff bis max 60s (verhindert "Schutz/Rate-Limit" am Gerät)
 		const delay = this.reconnectDelayMs;
 		this.reconnectDelayMs = Math.min(60000, Math.floor(this.reconnectDelayMs * 1.5));
@@ -113,19 +138,30 @@ class bk215_localAdapter extends utils.Adapter {
 	}
 
 	private async onTcpConnected(): Promise<void> {
-		// Reset Backoff bei Erfolg
+		// Reset Backoff bei Erfolg (Socket connected)
 		this.reconnectDelayMs = 5000;
 
-		await this.safeSetState('info.connection', true);
+		// WICHTIG: noch NICHT grün – erst nach erstem DATA_REPORT
+		this.haveData = false;
+
+		await this.safeSetState('info.connection', false);
+		//await this.safeSetState('info.connected', false);
+
 		await this.safeSetState('info.endpoint', `${this.deviceHost}:${this.devicePort}`);
 		await this.safeSetState('info.lastError', '');
 
-		this.log.info('TCP connected.');
+		this.log.info('TCP socket connected (waiting for first DATA_REPORT).');
+
+		this.startDataWatchdog();
 	}
 
 	private async onTcpDisconnected(reason: string): Promise<void> {
-		// Das ist der entscheidende Teil: Ampel gelb/rot in Admin UI + Verbindung rot
+		this.haveData = false;
+		this.stopDataWatchdog();
+
+		// Ampel/Verbindung rot
 		await this.safeSetState('info.connection', false);
+		//await this.safeSetState('info.connected', false);
 		await this.safeSetState('info.endpoint', 'Keine Verbindung');
 		await this.safeSetState('info.lastError', reason);
 
@@ -136,6 +172,7 @@ class bk215_localAdapter extends utils.Adapter {
 	private onUnload(callback: () => void): void {
 		try {
 			this.failAllPending(new Error('Adapter unloading'));
+			this.stopDataWatchdog();
 			this.tcp?.destroy();
 			this.tcp = null;
 			callback();
@@ -145,9 +182,11 @@ class bk215_localAdapter extends utils.Adapter {
 	}
 
 	private async handleDeviceMessage(msg: DeviceMessage): Promise<void> {
+		const hexCode = `0x${msg.code.toString(16).toUpperCase()}`;
+
 		if (this.cfgDebug) {
 			await this.safeSetState('status.raw_message', JSON.stringify(msg));
-			this.log.info(JSON.stringify(msg));
+			this.log.debug(`RX Code: ${msg.code} (${hexCode})`);
 		}
 
 		if (isAck(msg.code)) {
@@ -161,7 +200,7 @@ class bk215_localAdapter extends utils.Adapter {
 				return;
 			}
 
-			// command ACK: {"code":0x6040,"data":{"tXXX":0}}
+			// command ACK: {"code":0x....,"data":{"tXXX":0}}
 			for (const [field, rcRaw] of Object.entries(data)) {
 				const p = this.pending.get(field);
 				if (!p) {
@@ -182,12 +221,22 @@ class bk215_localAdapter extends utils.Adapter {
 		}
 
 		if (isDataReport(msg.code)) {
+			// Erstes DATA_REPORT => jetzt wirklich "Verbunden"
+			if (!this.haveData) {
+				this.haveData = true;
+				await this.safeSetState('info.connection', true);
+				//await this.safeSetState('info.connected', true);
+				this.log.info('First DATA_REPORT received -> connection is considered OK.');
+			}
+
+			this.kickDataWatchdog();
+
 			await applyDataReport(this as any, msg.data || {});
 			return;
 		}
 
 		if (this.cfgDebug) {
-			this.log.debug(`Unknown message code: ${msg.code}`);
+			this.log.debug(`Unknown message code: ${msg.code} (${hexCode})`);
 		}
 	}
 
@@ -201,7 +250,8 @@ class bk215_localAdapter extends utils.Adapter {
 			return;
 		}
 
-		if (!this.tcp || !this.tcp.isConnected()) {
+		// Nur schreiben, wenn wir wirklich "haveData" haben (sauberer als nur Socket connected)
+		if (!this.tcp || !this.tcp.isConnected() || !this.haveData) {
 			this.log.warn(`Nicht verbunden: ignoriere write auf ${id}`);
 			return;
 		}
@@ -338,6 +388,41 @@ class bk215_localAdapter extends utils.Adapter {
 			if (this.cfgDebug) {
 				this.log.debug(`setState failed for ${id}: ${this.errToString(e)}`);
 			}
+		}
+	}
+
+	private startDataWatchdog(): void {
+		this.stopDataWatchdog();
+
+		this.dataWatchdog = setTimeout(() => {
+			this.dataWatchdog = null;
+
+			// Socket steht evtl. noch, aber Gerät liefert nichts mehr -> reconnect erzwingen
+			void this.onTcpDisconnected(`No DATA_REPORT for ${this.dataWatchdogMs}ms`);
+			this.tcp?.destroy();
+			this.scheduleReconnect();
+		}, this.dataWatchdogMs);
+	}
+
+	private kickDataWatchdog(): void {
+		if (!this.dataWatchdog) {
+			return;
+		}
+
+		clearTimeout(this.dataWatchdog);
+		this.dataWatchdog = setTimeout(() => {
+			this.dataWatchdog = null;
+
+			void this.onTcpDisconnected(`No DATA_REPORT for ${this.dataWatchdogMs}ms`);
+			this.tcp?.destroy();
+			this.scheduleReconnect();
+		}, this.dataWatchdogMs);
+	}
+
+	private stopDataWatchdog(): void {
+		if (this.dataWatchdog) {
+			clearTimeout(this.dataWatchdog);
+			this.dataWatchdog = null;
 		}
 	}
 }

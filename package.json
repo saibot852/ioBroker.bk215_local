@@ -1,11 +1,8 @@
 {
   "name": "iobroker.bk215_local",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "BK215 Local (unofficial)",
-  "author": {
-    "name": "saibot852",
-    "email": "petrasch.tobias@t-online.de"
-  },
+  "author": "saibot852 <petrasch.tobias@t-online.de>",
   "contributors": [],
   "homepage": "https://github.com/saibot852/ioBroker.bk215_local",
   "license": "MIT",
@@ -18,7 +15,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/saibot852/ioBroker.bk215_local.git"
+    "url": "git+https://github.com/saibot852/ioBroker.bk215_local.git"
   },
   "bugs": {
     "url": "https://github.com/saibot852/ioBroker.bk215_local/issues"
@@ -54,7 +51,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc --noEmit -p tsconfig.check.json",
-    "lint": "eslint -c eslint.config.mjs .",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+	"lint:fix": "eslint \"src/**/*.{ts,tsx}\" --fix",
     "translate": "translate-adapter",
     "test:js": "mocha --config test/mocharc.custom.json \"{!(node_modules|test)/**/*.test.js,*.test.js,test/**/test!(PackageFiles|Startup).js}\"",
     "test:package": "mocha test/package --exit",
@@ -63,5 +61,8 @@
     "release": "release-script",
     "dev-server": "dev-server"
   },
-  "readmeFilename": "README.md"
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  }
 }

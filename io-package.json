@@ -1,19 +1,27 @@
 {
   "common": {
     "name": "bk215_local",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "adminUI": { "config": "json" },
     "news": {
       "1.0.0": {
         "en": "First public release",
         "de": "Erstes öffentliches Release"
+      },
+	  "1.0.1": {
+        "en": "Fix reconnect problems",
+        "de": "Fix reconnect Probleme"
       }
     },
     "titleLang": {
-      "en": "Adapter for BK215 (SunEnergy XT) devices without cloud dependency",
-      "de": "Adapter für BK215 (SunEnergy XT) Geräte ohne Cloud"
+      "en": "Adapter for BK215 storage",
+      "de": "Adapter für BK215 Speicher"
     },
     "descLang": {
+      "en": "Local TCP adapter for BK215 (SunEnergy XT) devices without cloud dependency.",
+      "de": "Lokaler TCP Adapter für BK215 (SunEnergy XT) Geräte ohne Cloud-Abhängigkeit."
+    },
+	"desc": {
       "en": "Local TCP adapter for BK215 (SunEnergy XT) devices without cloud dependency.",
       "de": "Lokaler TCP Adapter für BK215 (SunEnergy XT) Geräte ohne Cloud-Abhängigkeit."
     },

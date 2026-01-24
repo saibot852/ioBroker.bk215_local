@@ -26,7 +26,7 @@
           "min": 500,
           "max": 20000,
           "step": 250,
-          "default": 2000,
+          "default": 5000,
           "tooltip": "Connection/command timeout in milliseconds"
         },
         "autoReconnect": {

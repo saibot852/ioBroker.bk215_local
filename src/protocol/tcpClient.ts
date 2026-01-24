@@ -52,8 +52,9 @@ export class bk215_localTcpClient {
 
 	private callbacks: TcpClientCallbacks;
 
-	// connect-timeout only (separate from idle timeout!)
-	private connectTimer: NodeJS.Timeout | null = null;
+	private lastRxTs = 0;
+
+	private watchdog: NodeJS.Timeout | null = null;
 
 	/**
 	 * Create a new TCP client.
@@ -75,11 +76,10 @@ export class bk215_localTcpClient {
 
 	/**
 	 * Connect to device.
-	 * timeoutMs is used as CONNECT timeout, not as idle timeout.
 	 *
 	 * @param host - Device IP/hostname
 	 * @param port - Device TCP port
-	 * @param timeoutMs - Socket timeout in milliseconds
+	 * @param timeoutMs - Connection/idle timeout in milliseconds (used as baseline)
 	 */
 	public connect(host: string, port: number, timeoutMs: number): void {
 		this.destroy();
@@ -88,51 +88,51 @@ export class bk215_localTcpClient {
 		this.socket = sock;
 
 		sock.setNoDelay(true);
-		sock.setTimeout(timeoutMs);
+		sock.setKeepAlive(true, 30_000);
+
+		// Idle timeout (wenn lange keine Daten kommen -> offline/reconnect)
+		// Wir nehmen max(60s, timeoutMs) damit kleine timeouts nicht zu aggressiv sind.
+		const idleTimeoutMs = Math.max(60_000, timeoutMs);
+		sock.setTimeout(idleTimeoutMs);
+
+		this.lastRxTs = Date.now();
+		this.startWatchdog(idleTimeoutMs + 5_000);
 
 		sock.on('connect', () => {
-			if (this.callbacks.onConnect) {
-				this.callbacks.onConnect();
-			}
-
-			this.sendMessage(
-				{
-					code: 0x6052,
-					data: {},
-				},
-				true,
-			);
+			this.callbacks.onConnect?.();
+			this.sendHandshake();
 		});
 
 		sock.on('data', buf => {
+			this.lastRxTs = Date.now();
 			this.rx += buf.toString('ascii');
 
 			const parsed = parseJsonStream(this.rx);
 			this.rx = parsed.rest;
 
 			for (const msg of parsed.messages) {
-				if (this.callbacks.onMessage) {
-					this.callbacks.onMessage(msg);
-				}
+				this.callbacks.onMessage?.(msg);
 			}
 		});
 
+		// Wenn wirklich lange nix kommt → Verbindung killen, damit Adapter reconnect triggert
 		sock.on('timeout', () => {
-			// ignore (idle)
+			this.callbacks.onError?.(new Error('Socket idle timeout'));
+			try {
+				sock.destroy(new Error('Socket idle timeout'));
+			} catch {
+				// ignore
+			}
 		});
 
 		sock.on('close', () => {
+			this.stopWatchdog();
 			this.socket = null;
-
-			if (this.callbacks.onClose) {
-				this.callbacks.onClose();
-			}
+			this.callbacks.onClose?.();
 		});
 
 		sock.on('error', err => {
-			if (this.callbacks.onError) {
-				this.callbacks.onError(err);
-			}
+			this.callbacks.onError?.(err);
 		});
 
 		sock.connect(port, host);
@@ -186,7 +186,7 @@ export class bk215_localTcpClient {
 	 *
 	 * @param host - Device IP/hostname
 	 * @param port - Device TCP port
-	 * @param timeoutMs - Socket timeout in milliseconds
+	 * @param timeoutMs - Timeout in milliseconds
 	 * @param delayMs - Delay before reconnect attempt (ms)
 	 */
 	public scheduleReconnect(host: string, port: number, timeoutMs: number, delayMs = 5000): void {
@@ -202,7 +202,6 @@ export class bk215_localTcpClient {
 	 */
 	public destroy(): void {
 		this.clearReconnect();
-		this.clearConnectTimer();
 		this.rx = '';
 
 		if (this.socket) {
@@ -214,6 +213,8 @@ export class bk215_localTcpClient {
 			}
 			this.socket = null;
 		}
+
+		this.stopWatchdog();
 	}
 
 	private clearReconnect(): void {
@@ -223,10 +224,31 @@ export class bk215_localTcpClient {
 		}
 	}
 
-	private clearConnectTimer(): void {
-		if (this.connectTimer) {
-			clearTimeout(this.connectTimer);
-			this.connectTimer = null;
+	private startWatchdog(maxIdleMs: number): void {
+		this.stopWatchdog();
+
+		this.watchdog = setInterval(() => {
+			const sock = this.socket;
+			if (!sock || sock.destroyed) {
+				return;
+			}
+
+			const idle = Date.now() - this.lastRxTs;
+			if (idle > maxIdleMs) {
+				this.callbacks.onError?.(new Error(`No RX for ${idle}ms -> reconnect`));
+				try {
+					sock.destroy(new Error('RX watchdog timeout'));
+				} catch {
+					// ignore
+				}
+			}
+		}, 5_000);
+	}
+
+	private stopWatchdog(): void {
+		if (this.watchdog) {
+			clearInterval(this.watchdog);
+			this.watchdog = null;
 		}
 	}
 }
@@ -244,11 +266,11 @@ export function isAck(code: number): boolean {
 
 /**
  * Check whether a message code represents a data report.
- * Data report codes seen are 0x6052 and 0x6055.
+ * Data report codes seen are 0x6052, 0x6053 and 0x6055.
  *
  * @param code - Message code from device
  * @returns True if data report, otherwise false
  */
 export function isDataReport(code: number): boolean {
-	return code === 0x6052 || code === 0x6055;
+	return code === 0x6052 || code === 0x6053 || code === 0x6055;
 }

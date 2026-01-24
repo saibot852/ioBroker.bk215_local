@@ -1,0 +1,14 @@
+# build output
+build/
+dist/
+
+# foreign helper scripts / tooling
+lib/
+localNpmRepo/
+
+# node
+node_modules/
+
+# optional
+tmp/
+coverage/
