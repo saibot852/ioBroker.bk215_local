@@ -206,5 +206,5 @@ function isAck(code) {
  * @returns True if data report, otherwise false
  */
 function isDataReport(code) {
-    return code === constants_1.MessageCode.DATA_REPORT || code === 0x6055 || code === constants_1.MessageCode.DATA_REPORT_ALT;
+    return code === constants_1.MessageCode.DATA_REPORT || code === 0x6055 || code === constants_1.MessageCode.DATA_REPORT_ALT || code === 0x6060;
 }

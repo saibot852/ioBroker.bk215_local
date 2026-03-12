@@ -18,6 +18,7 @@ exports.MessageCode = {
      * Some firmwares use an alternate data report code.
      */
     DATA_REPORT_ALT: 0x6053,
+    DATA_REPORT_EXT: 0x6060,
     /**
      * Client command wrapper for setting values.
      */

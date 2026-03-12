@@ -232,7 +232,11 @@ class bk215_localAdapter extends utils.Adapter {
 			return;
 		}
 
-		if (msg.code === MessageCode.DATA_REPORT || msg.code === MessageCode.DATA_REPORT_ALT) {
+		if (
+			msg.code === MessageCode.DATA_REPORT ||
+			msg.code === MessageCode.DATA_REPORT_ALT ||
+			msg.code === MessageCode.DATA_REPORT_EXT
+		) {
 			await this.handleDataReport(msg);
 			return;
 		}

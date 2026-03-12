@@ -219,7 +219,9 @@ class bk215_localAdapter extends utils.Adapter {
             await this.handleAckMessage(msg);
             return;
         }
-        if (msg.code === constants_1.MessageCode.DATA_REPORT || msg.code === constants_1.MessageCode.DATA_REPORT_ALT) {
+        if (msg.code === constants_1.MessageCode.DATA_REPORT ||
+            msg.code === constants_1.MessageCode.DATA_REPORT_ALT ||
+            msg.code === constants_1.MessageCode.DATA_REPORT_EXT) {
             await this.handleDataReport(msg);
             return;
         }

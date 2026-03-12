@@ -1,7 +1,7 @@
 {
   "common": {
     "name": "bk215_local",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "adminUI": { "config": "json" },
     "news": {
       "1.0.0": {

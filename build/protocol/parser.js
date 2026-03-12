@@ -11,9 +11,6 @@ exports.isDataReport = isDataReport;
 exports.getFieldValue = getFieldValue;
 exports.transformReadValue = transformReadValue;
 exports.extractStateUpdates = extractStateUpdates;
-function round1(value) {
-    return Math.round(value * 10) / 10;
-}
 const constants_1 = require("./constants");
 const mapping_1 = require("./mapping");
 const MAX_REST_LENGTH = 64 * 1024;
@@ -103,7 +100,9 @@ function parseJsonStream(rx) {
  * Returns true if a device message is a data report.
  */
 function isDataReport(msg) {
-    return msg.code === constants_1.MessageCode.DATA_REPORT || msg.code === constants_1.MessageCode.DATA_REPORT_ALT;
+    return (msg.code === constants_1.MessageCode.DATA_REPORT ||
+        msg.code === constants_1.MessageCode.DATA_REPORT_ALT ||
+        msg.code === constants_1.MessageCode.DATA_REPORT_EXT);
 }
 /**
  * Safely read a raw field value from a device message.
@@ -120,12 +119,15 @@ function isUnavailableRawValue(num) {
 /**
  * Transform raw device values into ioBroker state values.
  */
+function round1(value) {
+    return Math.round(value * 10) / 10;
+}
 function transformReadValue(entry, raw) {
     if (raw === undefined || raw === null) {
         return null;
     }
     const num = Number(raw);
-    if (isUnavailableRawValue(num)) {
+    if (!Number.isFinite(num) || num === constants_1.UNAVAILABLE_VALUE || num === -1) {
         return null;
     }
     let value;
@@ -143,7 +145,7 @@ function transformReadValue(entry, raw) {
             value = num * 0.001;
             break;
         case 'temp273':
-            value = (num / 10) - 273.15;
+            value = num - 273.15;
             break;
         case 'bit':
             if (entry.bit === undefined) {
@@ -154,9 +156,18 @@ function transformReadValue(entry, raw) {
         default:
             return null;
     }
-    /* zentrale Rundung */
     if (typeof value === 'number') {
-        value = round1(value);
+        switch (entry.transform) {
+            case 'x0.001': // energy
+                value = Math.round(value * 1000) / 1000;
+                break;
+            case 'temp273':
+            case 'x0.1':
+                value = Math.round(value * 10) / 10;
+                break;
+            default:
+                value = Math.round(value);
+        }
     }
     return value;
 }

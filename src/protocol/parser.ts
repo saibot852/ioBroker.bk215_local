@@ -4,10 +4,6 @@
  * Stream parser and value decoder for the bk215_local TCP protocol.
  * The device often sends JSON objects back-to-back without newline framing.
  */
- 
- function round1(value: number): number {
-	return Math.round(value * 10) / 10;
-}
 
 import { MessageCode, UNAVAILABLE_VALUE, type DeviceMessage } from './constants';
 import { READ_STATE_MAP, type ReadStateMapEntry } from './mapping';
@@ -132,7 +128,11 @@ export function parseJsonStream(rx: string): ParseResult {
  * Returns true if a device message is a data report.
  */
 export function isDataReport(msg: DeviceMessage): boolean {
-	return msg.code === MessageCode.DATA_REPORT || msg.code === MessageCode.DATA_REPORT_ALT;
+	return (
+		msg.code === MessageCode.DATA_REPORT ||
+		msg.code === MessageCode.DATA_REPORT_ALT ||
+		msg.code === MessageCode.DATA_REPORT_EXT
+	);
 }
 
 /**
@@ -152,56 +152,69 @@ function isUnavailableRawValue(num: number): boolean {
 /**
  * Transform raw device values into ioBroker state values.
  */
+function round1(value: number): number {
+	return Math.round(value * 10) / 10;
+}
+
 export function transformReadValue(entry: ReadStateMapEntry, raw: unknown): number | boolean | null {
 	if (raw === undefined || raw === null) {
 		return null;
 	}
 
 	const num = Number(raw);
-	if (isUnavailableRawValue(num)) {
+	if (!Number.isFinite(num) || num === UNAVAILABLE_VALUE || num === -1) {
 		return null;
 	}
 
 	let value: number | boolean | null;
 
-switch (entry.transform ?? 'none') {
-	case 'none':
-		value = entry.type === 'boolean' ? num === 1 : num;
-		break;
+	switch (entry.transform ?? 'none') {
+		case 'none':
+			value = entry.type === 'boolean' ? num === 1 : num;
+			break;
 
-	case 'x0.1':
-		value = num * 0.1;
-		break;
+		case 'x0.1':
+			value = num * 0.1;
+			break;
 
-	case 'x0.01':
-		value = num * 0.01;
-		break;
+		case 'x0.01':
+			value = num * 0.01;
+			break;
 
-	case 'x0.001':
-		value = num * 0.001;
-		break;
+		case 'x0.001':
+			value = num * 0.001;
+			break;
 
-	case 'temp273':
-		value = (num / 10) - 273.15;
-		break;
+		case 'temp273':
+			value = num - 273.15;
+			break;
 
-	case 'bit':
-		if (entry.bit === undefined) {
+		case 'bit':
+			if (entry.bit === undefined) {
+				return null;
+			}
+			value = ((num >> entry.bit) & 1) === 1;
+			break;
+
+		default:
 			return null;
-		}
-		value = ((num >> entry.bit) & 1) === 1;
-		break;
+	}
 
-	default:
-		return null;
+	if (typeof value === 'number') {
+	switch (entry.transform) {
+		case 'x0.001': // energy
+			value = Math.round(value * 1000) / 1000;
+			break;
+		case 'temp273':
+		case 'x0.1':
+			value = Math.round(value * 10) / 10;
+			break;
+		default:
+			value = Math.round(value);
+	}
 }
 
-/* zentrale Rundung */
-if (typeof value === 'number') {
-	value = round1(value);
-}
-
-return value;
+	return value;
 }
 
 /**

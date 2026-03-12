@@ -263,5 +263,5 @@ export function isAck(code: number): boolean {
  * @returns True if data report, otherwise false
  */
 export function isDataReport(code: number): boolean {
-	return code === MessageCode.DATA_REPORT || code === 0x6055 || code === MessageCode.DATA_REPORT_ALT;
+	return code === MessageCode.DATA_REPORT || code === 0x6055 || code === MessageCode.DATA_REPORT_ALT || code === 0x6060;
 }
