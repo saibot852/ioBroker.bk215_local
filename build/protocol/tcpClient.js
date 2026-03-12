@@ -15,6 +15,7 @@ exports.bk215_localTcpClient = void 0;
 exports.isAck = isAck;
 exports.isDataReport = isDataReport;
 const net_1 = __importDefault(require("net"));
+const constants_1 = require("./constants");
 const parser_1 = require("./parser");
 /**
  * TCP client implementation for BK215 local protocol.
@@ -28,65 +29,72 @@ class bk215_localTcpClient {
     constructor(callbacks = {}) {
         this.socket = null;
         this.rx = '';
-        this.reconnectTimer = null;
-        // connect-timeout only (separate from idle timeout!)
         this.connectTimer = null;
+        this.isClosing = false;
+        this.hasConnectedOnce = false;
         this.callbacks = callbacks;
     }
     /**
-     * Returns true if socket is connected.
+     * Returns true if socket is really connected.
      *
      * @returns True if connected, false otherwise
      */
     isConnected() {
-        return !!this.socket && !this.socket.destroyed;
+        return !!this.socket && !this.socket.destroyed && this.socket.connecting === false;
     }
     /**
      * Connect to device.
-     * timeoutMs is used as CONNECT timeout, not as idle timeout.
+     * timeoutMs is used as connect timeout, not as idle timeout.
      *
      * @param host - Device IP/hostname
      * @param port - Device TCP port
-     * @param timeoutMs - Socket timeout in milliseconds
+     * @param timeoutMs - Connect timeout in milliseconds
      */
     connect(host, port, timeoutMs) {
         this.destroy();
         const sock = new net_1.default.Socket();
         this.socket = sock;
+        this.rx = '';
+        this.isClosing = false;
+        this.hasConnectedOnce = false;
         sock.setNoDelay(true);
-        sock.setTimeout(timeoutMs);
-        sock.on('connect', () => {
-            if (this.callbacks.onConnect) {
-                this.callbacks.onConnect();
+        this.connectTimer = setTimeout(() => {
+            if (!this.hasConnectedOnce && this.socket === sock && !sock.destroyed) {
+                this.safeEmitError(new Error(`Connect timeout after ${timeoutMs}ms`));
+                this.safeCloseSocket(sock);
             }
-            this.sendMessage({
-                code: 0x6052,
-                data: {},
-            }, true);
+        }, timeoutMs);
+        sock.on('connect', () => {
+            this.hasConnectedOnce = true;
+            this.clearConnectTimer();
+            this.callbacks.onConnect?.();
+            this.sendHandshake();
         });
         sock.on('data', buf => {
-            this.rx += buf.toString('ascii');
+            this.rx += buf.toString('utf8');
             const parsed = (0, parser_1.parseJsonStream)(this.rx);
             this.rx = parsed.rest;
             for (const msg of parsed.messages) {
-                if (this.callbacks.onMessage) {
-                    this.callbacks.onMessage(msg);
-                }
+                this.callbacks.onMessage?.(msg);
             }
         });
         sock.on('timeout', () => {
-            // ignore (idle)
+            // no idle-timeout handling here
         });
         sock.on('close', () => {
-            this.socket = null;
-            if (this.callbacks.onClose) {
-                this.callbacks.onClose();
+            const wasActiveSocket = this.socket === sock;
+            this.clearConnectTimer();
+            if (wasActiveSocket) {
+                this.socket = null;
+            }
+            this.rx = '';
+            if (!this.isClosing) {
+                this.callbacks.onClose?.();
             }
         });
         sock.on('error', err => {
-            if (this.callbacks.onError) {
-                this.callbacks.onError(err);
-            }
+            this.clearConnectTimer();
+            this.safeEmitError(err);
         });
         sock.connect(port, host);
     }
@@ -95,18 +103,18 @@ class bk215_localTcpClient {
      */
     sendHandshake() {
         this.sendMessage({
-            code: 0x6052,
+            code: constants_1.MessageCode.DATA_REPORT,
             data: {},
         }, true);
     }
     /**
-     * Send a command payload (0x6056).
+     * Send a command payload.
      *
      * @param data - Field/value map to send to the device
      */
     sendCommand(data) {
         this.sendMessage({
-            code: 0x6056,
+            code: constants_1.MessageCode.COMMAND_SET,
             data,
         }, false);
     }
@@ -117,48 +125,59 @@ class bk215_localTcpClient {
      * @param crlf - Append CRLF after JSON payload
      */
     sendMessage(msg, crlf) {
-        if (!this.socket || this.socket.destroyed) {
+        if (!this.socket || this.socket.destroyed || this.socket.connecting) {
             return;
         }
         const payload = `${JSON.stringify(msg)}${crlf ? '\r\n' : ''}`;
-        this.socket.write(payload, 'ascii');
-    }
-    /**
-     * Schedule reconnect attempt.
-     *
-     * @param host - Device IP/hostname
-     * @param port - Device TCP port
-     * @param timeoutMs - Socket timeout in milliseconds
-     * @param delayMs - Delay before reconnect attempt (ms)
-     */
-    scheduleReconnect(host, port, timeoutMs, delayMs = 5000) {
-        this.clearReconnect();
-        this.reconnectTimer = setTimeout(() => {
-            this.connect(host, port, timeoutMs);
-        }, delayMs);
+        this.socket.write(payload, 'utf8');
     }
     /**
      * Destroy socket and clear timers.
      */
     destroy() {
-        this.clearReconnect();
+        this.isClosing = true;
         this.clearConnectTimer();
         this.rx = '';
         if (this.socket) {
-            this.socket.removeAllListeners();
+            const sock = this.socket;
+            this.socket = null;
             try {
-                this.socket.destroy();
+                sock.removeAllListeners();
             }
             catch {
                 // ignore
             }
-            this.socket = null;
+            try {
+                sock.end();
+            }
+            catch {
+                // ignore
+            }
+            try {
+                sock.destroy();
+            }
+            catch {
+                // ignore
+            }
         }
     }
-    clearReconnect() {
-        if (this.reconnectTimer) {
-            clearTimeout(this.reconnectTimer);
-            this.reconnectTimer = null;
+    safeEmitError(err) {
+        if (!this.isClosing) {
+            this.callbacks.onError?.(err);
+        }
+    }
+    safeCloseSocket(sock) {
+        try {
+            sock.end();
+        }
+        catch {
+            // ignore
+        }
+        try {
+            sock.destroy();
+        }
+        catch {
+            // ignore
         }
     }
     clearConnectTimer() {
@@ -187,5 +206,5 @@ function isAck(code) {
  * @returns True if data report, otherwise false
  */
 function isDataReport(code) {
-    return code === 0x6052 || code === 0x6055;
+    return code === constants_1.MessageCode.DATA_REPORT || code === 0x6055 || code === constants_1.MessageCode.DATA_REPORT_ALT;
 }

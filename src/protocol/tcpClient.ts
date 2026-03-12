@@ -8,7 +8,7 @@
  */
 
 import net from 'net';
-import type { DeviceMessage } from './constants';
+import { MessageCode, type DeviceMessage } from './constants';
 import { parseJsonStream } from './parser';
 
 /**
@@ -45,15 +45,11 @@ export type TcpClientCallbacks = {
  */
 export class bk215_localTcpClient {
 	private socket: net.Socket | null = null;
-
 	private rx = '';
-
-	private reconnectTimer: NodeJS.Timeout | null = null;
-
 	private callbacks: TcpClientCallbacks;
-
-	// connect-timeout only (separate from idle timeout!)
 	private connectTimer: NodeJS.Timeout | null = null;
+	private isClosing = false;
+	private hasConnectedOnce = false;
 
 	/**
 	 * Create a new TCP client.
@@ -65,74 +61,81 @@ export class bk215_localTcpClient {
 	}
 
 	/**
-	 * Returns true if socket is connected.
+	 * Returns true if socket is really connected.
 	 *
 	 * @returns True if connected, false otherwise
 	 */
 	public isConnected(): boolean {
-		return !!this.socket && !this.socket.destroyed;
+		return !!this.socket && !this.socket.destroyed && this.socket.connecting === false;
 	}
 
 	/**
 	 * Connect to device.
-	 * timeoutMs is used as CONNECT timeout, not as idle timeout.
+	 * timeoutMs is used as connect timeout, not as idle timeout.
 	 *
 	 * @param host - Device IP/hostname
 	 * @param port - Device TCP port
-	 * @param timeoutMs - Socket timeout in milliseconds
+	 * @param timeoutMs - Connect timeout in milliseconds
 	 */
 	public connect(host: string, port: number, timeoutMs: number): void {
 		this.destroy();
 
 		const sock = new net.Socket();
 		this.socket = sock;
+		this.rx = '';
+		this.isClosing = false;
+		this.hasConnectedOnce = false;
 
 		sock.setNoDelay(true);
-		sock.setTimeout(timeoutMs);
+
+		this.connectTimer = setTimeout(() => {
+			if (!this.hasConnectedOnce && this.socket === sock && !sock.destroyed) {
+				this.safeEmitError(new Error(`Connect timeout after ${timeoutMs}ms`));
+				this.safeCloseSocket(sock);
+			}
+		}, timeoutMs);
 
 		sock.on('connect', () => {
-			if (this.callbacks.onConnect) {
-				this.callbacks.onConnect();
-			}
+			this.hasConnectedOnce = true;
+			this.clearConnectTimer();
 
-			this.sendMessage(
-				{
-					code: 0x6052,
-					data: {},
-				},
-				true,
-			);
+			this.callbacks.onConnect?.();
+
+			this.sendHandshake();
 		});
 
 		sock.on('data', buf => {
-			this.rx += buf.toString('ascii');
+			this.rx += buf.toString('utf8');
 
 			const parsed = parseJsonStream(this.rx);
 			this.rx = parsed.rest;
 
 			for (const msg of parsed.messages) {
-				if (this.callbacks.onMessage) {
-					this.callbacks.onMessage(msg);
-				}
+				this.callbacks.onMessage?.(msg);
 			}
 		});
 
 		sock.on('timeout', () => {
-			// ignore (idle)
+			// no idle-timeout handling here
 		});
 
 		sock.on('close', () => {
-			this.socket = null;
+			const wasActiveSocket = this.socket === sock;
 
-			if (this.callbacks.onClose) {
-				this.callbacks.onClose();
+			this.clearConnectTimer();
+			if (wasActiveSocket) {
+				this.socket = null;
+			}
+			this.rx = '';
+
+			if (!this.isClosing) {
+				this.callbacks.onClose?.();
 			}
 		});
 
 		sock.on('error', err => {
-			if (this.callbacks.onError) {
-				this.callbacks.onError(err);
-			}
+			this.clearConnectTimer();
+			this.safeEmitError(err);
 		});
 
 		sock.connect(port, host);
@@ -144,7 +147,7 @@ export class bk215_localTcpClient {
 	public sendHandshake(): void {
 		this.sendMessage(
 			{
-				code: 0x6052,
+				code: MessageCode.DATA_REPORT,
 				data: {},
 			},
 			true,
@@ -152,14 +155,14 @@ export class bk215_localTcpClient {
 	}
 
 	/**
-	 * Send a command payload (0x6056).
+	 * Send a command payload.
 	 *
 	 * @param data - Field/value map to send to the device
 	 */
 	public sendCommand(data: Record<string, any>): void {
 		this.sendMessage(
 			{
-				code: 0x6056,
+				code: MessageCode.COMMAND_SET,
 				data,
 			},
 			false,
@@ -173,53 +176,63 @@ export class bk215_localTcpClient {
 	 * @param crlf - Append CRLF after JSON payload
 	 */
 	public sendMessage(msg: DeviceMessage, crlf: boolean): void {
-		if (!this.socket || this.socket.destroyed) {
+		if (!this.socket || this.socket.destroyed || this.socket.connecting) {
 			return;
 		}
 
 		const payload = `${JSON.stringify(msg)}${crlf ? '\r\n' : ''}`;
-		this.socket.write(payload, 'ascii');
-	}
-
-	/**
-	 * Schedule reconnect attempt.
-	 *
-	 * @param host - Device IP/hostname
-	 * @param port - Device TCP port
-	 * @param timeoutMs - Socket timeout in milliseconds
-	 * @param delayMs - Delay before reconnect attempt (ms)
-	 */
-	public scheduleReconnect(host: string, port: number, timeoutMs: number, delayMs = 5000): void {
-		this.clearReconnect();
-
-		this.reconnectTimer = setTimeout(() => {
-			this.connect(host, port, timeoutMs);
-		}, delayMs);
+		this.socket.write(payload, 'utf8');
 	}
 
 	/**
 	 * Destroy socket and clear timers.
 	 */
 	public destroy(): void {
-		this.clearReconnect();
+		this.isClosing = true;
 		this.clearConnectTimer();
 		this.rx = '';
 
 		if (this.socket) {
-			this.socket.removeAllListeners();
+			const sock = this.socket;
+			this.socket = null;
+
 			try {
-				this.socket.destroy();
+				sock.removeAllListeners();
 			} catch {
 				// ignore
 			}
-			this.socket = null;
+
+			try {
+				sock.end();
+			} catch {
+				// ignore
+			}
+
+			try {
+				sock.destroy();
+			} catch {
+				// ignore
+			}
 		}
 	}
 
-	private clearReconnect(): void {
-		if (this.reconnectTimer) {
-			clearTimeout(this.reconnectTimer);
-			this.reconnectTimer = null;
+	private safeEmitError(err: Error): void {
+		if (!this.isClosing) {
+			this.callbacks.onError?.(err);
+		}
+	}
+
+	private safeCloseSocket(sock: net.Socket): void {
+		try {
+			sock.end();
+		} catch {
+			// ignore
+		}
+
+		try {
+			sock.destroy();
+		} catch {
+			// ignore
 		}
 	}
 
@@ -250,5 +263,5 @@ export function isAck(code: number): boolean {
  * @returns True if data report, otherwise false
  */
 export function isDataReport(code: number): boolean {
-	return code === 0x6052 || code === 0x6055;
+	return code === MessageCode.DATA_REPORT || code === 0x6055 || code === MessageCode.DATA_REPORT_ALT;
 }

@@ -6,10 +6,17 @@
 
 import * as utils from '@iobroker/adapter-core';
 import { ensureObjects } from './iobroker/objects';
-import { applyDataReport } from './iobroker/applyData';
-import { bk215_localTcpClient, isAck, isDataReport } from './protocol/tcpClient';
-import { DEFAULT_PORT, DEFAULT_TIMEOUT_SEC, RESPONSE_SUCCESS, Limits, type DeviceMessage } from './protocol/constants';
+import { bk215_localTcpClient, isAck } from './protocol/tcpClient';
+import {
+	DEFAULT_PORT,
+	DEFAULT_TIMEOUT_SEC,
+	Limits,
+	MessageCode,
+	RESPONSE_SUCCESS,
+	type DeviceMessage,
+} from './protocol/constants';
 import { WRITE_FIELD_MAP } from './protocol/mapping';
+import { extractStateUpdates } from './protocol/parser';
 
 type PendingCmd = {
 	timer: ReturnType<typeof setTimeout>;
@@ -29,6 +36,9 @@ class bk215_localAdapter extends utils.Adapter {
 	private pending = new Map<string, PendingCmd>();
 
 	private reconnectDelayMs = 5000;
+	private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+	private connectInProgress = false;
+	private isShuttingDown = false;
 
 	public constructor(options: Partial<utils.AdapterOptions> = {}) {
 		super({
@@ -49,10 +59,10 @@ class bk215_localAdapter extends utils.Adapter {
 		this.timeoutMs = this.sanitizeNumber(cfg.timeout, Math.floor(DEFAULT_TIMEOUT_SEC * 1000), 500, 600000);
 		this.cfgReadOnly = !!cfg.readOnly;
 		this.cfgDebug = !!cfg.debug;
+		this.isShuttingDown = false;
 
 		await ensureObjects(this);
 
-		// Standard ioBroker connection flag (ampel/rot-gruen)
 		await this.safeSetState('info.connection', false);
 		await this.safeSetState('info.lastError', '');
 		await this.safeSetState('info.readOnly', this.cfgReadOnly);
@@ -73,16 +83,32 @@ class bk215_localAdapter extends utils.Adapter {
 		this.subscribeStates('modes.*');
 
 		this.reconnectDelayMs = 5000;
+		this.clearReconnectTimer();
+		this.createTcpClient();
+		this.connectTcp();
+
+		this.log.info(`bk215_local TCP Adapter gestartet (${this.deviceHost}:${this.devicePort}).`);
+	}
+
+	private createTcpClient(): void {
+		try {
+			this.tcp?.destroy();
+		} catch {
+			// ignore
+		}
 
 		this.tcp = new bk215_localTcpClient({
 			onConnect: () => {
+				this.connectInProgress = false;
 				void this.onTcpConnected();
 			},
 			onClose: () => {
+				this.connectInProgress = false;
 				void this.onTcpDisconnected('TCP connection closed');
 				this.scheduleReconnect();
 			},
 			onError: err => {
+				this.connectInProgress = false;
 				void this.onTcpDisconnected(`Socket error: ${err.message}`);
 				this.scheduleReconnect();
 			},
@@ -90,18 +116,41 @@ class bk215_localAdapter extends utils.Adapter {
 				void this.handleDeviceMessage(msg);
 			},
 		});
-
-		this.tcp.connect(this.deviceHost, this.devicePort, this.timeoutMs);
-
-		this.log.info(`bk215_local TCP Adapter gestartet (${this.deviceHost}:${this.devicePort}).`);
 	}
 
-	private scheduleReconnect(): void {
-		if (!this.tcp) {
+	private connectTcp(): void {
+		if (this.isShuttingDown) {
+			return;
+		}
+		if (!this.tcp || this.connectInProgress) {
+			return;
+		}
+		if (this.tcp.isConnected()) {
 			return;
 		}
 
-		// Backoff bis max 60s (verhindert "Schutz/Rate-Limit" am Gerät)
+		this.connectInProgress = true;
+
+		try {
+			this.tcp.connect(this.deviceHost, this.devicePort, this.timeoutMs);
+		} catch (e) {
+			this.connectInProgress = false;
+			void this.onTcpDisconnected(`Connect failed: ${this.errToString(e)}`);
+			this.scheduleReconnect();
+		}
+	}
+
+	private scheduleReconnect(): void {
+		if (this.isShuttingDown) {
+			return;
+		}
+		if (!this.deviceHost) {
+			return;
+		}
+		if (this.reconnectTimer) {
+			return;
+		}
+
 		const delay = this.reconnectDelayMs;
 		this.reconnectDelayMs = Math.min(60000, Math.floor(this.reconnectDelayMs * 1.5));
 
@@ -109,11 +158,31 @@ class bk215_localAdapter extends utils.Adapter {
 			this.log.debug(`Reconnect scheduled in ${delay}ms`);
 		}
 
-		this.tcp.scheduleReconnect(this.deviceHost, this.devicePort, this.timeoutMs, delay);
+		this.reconnectTimer = setTimeout(() => {
+			this.reconnectTimer = null;
+
+			if (this.isShuttingDown) {
+				return;
+			}
+
+			if (this.cfgDebug) {
+				this.log.debug('Reconnect attempt started');
+			}
+
+			this.createTcpClient();
+			this.connectTcp();
+		}, delay);
+	}
+
+	private clearReconnectTimer(): void {
+		if (this.reconnectTimer) {
+			clearTimeout(this.reconnectTimer);
+			this.reconnectTimer = null;
+		}
 	}
 
 	private async onTcpConnected(): Promise<void> {
-		// Reset Backoff bei Erfolg
+		this.clearReconnectTimer();
 		this.reconnectDelayMs = 5000;
 
 		await this.safeSetState('info.connection', true);
@@ -124,7 +193,6 @@ class bk215_localAdapter extends utils.Adapter {
 	}
 
 	private async onTcpDisconnected(reason: string): Promise<void> {
-		// Das ist der entscheidende Teil: Ampel gelb/rot in Admin UI + Verbindung rot
 		await this.safeSetState('info.connection', false);
 		await this.safeSetState('info.endpoint', 'Keine Verbindung');
 		await this.safeSetState('info.lastError', reason);
@@ -135,8 +203,17 @@ class bk215_localAdapter extends utils.Adapter {
 
 	private onUnload(callback: () => void): void {
 		try {
+			this.isShuttingDown = true;
+			this.connectInProgress = false;
+			this.clearReconnectTimer();
 			this.failAllPending(new Error('Adapter unloading'));
-			this.tcp?.destroy();
+
+			try {
+				this.tcp?.destroy();
+			} catch {
+				// ignore
+			}
+
 			this.tcp = null;
 			callback();
 		} catch {
@@ -151,44 +228,59 @@ class bk215_localAdapter extends utils.Adapter {
 		}
 
 		if (isAck(msg.code)) {
-			const data = msg.data || {};
-
-			// handshake ACK: {"code":0,"data":{}}
-			if (!Object.keys(data).length) {
-				if (this.cfgDebug) {
-					this.log.debug('Handshake ACK received.');
-				}
-				return;
-			}
-
-			// command ACK: {"code":0x6040,"data":{"tXXX":0}}
-			for (const [field, rcRaw] of Object.entries(data)) {
-				const p = this.pending.get(field);
-				if (!p) {
-					continue;
-				}
-
-				clearTimeout(p.timer);
-				this.pending.delete(field);
-
-				const rc = Number(rcRaw);
-				if (rc === RESPONSE_SUCCESS) {
-					p.resolve();
-				} else {
-					p.reject(new Error(`Device rejected ${field}, rc=${String(rcRaw)}`));
-				}
-			}
+			await this.handleAckMessage(msg);
 			return;
 		}
 
-		if (isDataReport(msg.code)) {
-			await applyDataReport(this as any, msg.data || {});
+		if (msg.code === MessageCode.DATA_REPORT || msg.code === MessageCode.DATA_REPORT_ALT) {
+			await this.handleDataReport(msg);
 			return;
 		}
 
 		if (this.cfgDebug) {
 			this.log.debug(`Unknown message code: ${msg.code}`);
 		}
+	}
+
+	private async handleAckMessage(msg: DeviceMessage): Promise<void> {
+		const data = msg.data || {};
+
+		// handshake ACK: {"code":0,"data":{}}
+		if (!Object.keys(data).length) {
+			if (this.cfgDebug) {
+				this.log.debug('Handshake ACK received.');
+			}
+			return;
+		}
+
+		// command ACK: {"code":0x6040,"data":{"tXXX":0}}
+		for (const [field, rcRaw] of Object.entries(data)) {
+			const p = this.pending.get(field);
+			if (!p) {
+				continue;
+			}
+
+			clearTimeout(p.timer);
+			this.pending.delete(field);
+
+			const rc = Number(rcRaw);
+			if (rc === RESPONSE_SUCCESS) {
+				p.resolve();
+			} else {
+				p.reject(new Error(`Device rejected ${field}, rc=${String(rcRaw)}`));
+			}
+		}
+	}
+
+	private async handleDataReport(msg: DeviceMessage): Promise<void> {
+		const updates = extractStateUpdates(msg);
+
+		for (const update of updates) {
+			await this.safeSetState(update.stateId, update.value);
+		}
+
+		await this.safeSetState('info.lastUpdate', Date.now());
+		await this.safeSetState('info.lastError', '');
 	}
 
 	private async onStateChange(id: string, state: ioBroker.State | null): Promise<void> {

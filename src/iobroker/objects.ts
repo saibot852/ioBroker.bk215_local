@@ -35,67 +35,65 @@ async function ensureNumber(
 async function ensureBool(adapter: ioBroker.Adapter, id: string, name: string, write = false): Promise<void> {
 	await adapter.setObjectNotExistsAsync(id, {
 		type: 'state',
-		common: { name, type: 'boolean', role: write ? 'switch.enable' : 'indicator', read: true, write },
+		common: {
+			name,
+			type: 'boolean',
+			role: write ? 'switch.enable' : 'indicator',
+			read: true,
+			write,
+		},
 		native: {},
 	});
 }
 
-async function ensureText(adapter: ioBroker.Adapter, id: string, name: string): Promise<void> {
+async function ensureText(
+	adapter: ioBroker.Adapter,
+	id: string,
+	name: string,
+	write = false,
+	role = 'text',
+): Promise<void> {
 	await adapter.setObjectNotExistsAsync(id, {
 		type: 'state',
-		common: { name, type: 'string', role: 'text', read: true, write: false },
+		common: {
+			name,
+			type: 'string',
+			role,
+			read: true,
+			write,
+		},
 		native: {},
 	});
 }
 
-/**
- * Ensures all required objects/states exist in ioBroker.
- *
- * @param adapter The adapter instance
- */
-export async function ensureObjects(adapter: ioBroker.Adapter): Promise<void> {
-	await adapter.setObjectNotExistsAsync('info', { type: 'channel', common: { name: 'Info' }, native: {} });
-	await adapter.setObjectNotExistsAsync('status', { type: 'channel', common: { name: 'Status' }, native: {} });
-	await adapter.setObjectNotExistsAsync('config', { type: 'channel', common: { name: 'Configuration' }, native: {} });
-	await adapter.setObjectNotExistsAsync('modes', { type: 'channel', common: { name: 'Modes' }, native: {} });
+async function ensureChannel(adapter: ioBroker.Adapter, id: string, name: string): Promise<void> {
+	await adapter.setObjectNotExistsAsync(id, {
+		type: 'channel',
+		common: { name },
+		native: {},
+	});
+}
 
-	await ensureText(adapter, 'info.endpoint', 'Endpoint');
-	await ensureBool(adapter, 'info.connection', 'Connection', false);
-	await ensureNumber(adapter, 'info.lastUpdate', 'Last update', 'value.time');
-	await ensureText(adapter, 'info.lastError', 'Last error');
-	await ensureBool(adapter, 'info.readOnly', 'Read-only', false);
-	await ensureText(adapter, 'status.raw_message', 'Last raw message');
-
-	// Battery SOC
+async function ensureBatterySocStates(adapter: ioBroker.Adapter): Promise<void> {
 	await ensureNumber(adapter, 'status.overall_soc', 'Overall SOC', 'value.battery', '%');
 	await ensureNumber(adapter, 'status.main_soc', 'Main battery SOC', 'value.battery', '%');
-	await ensureNumber(adapter, 'status.slave1_soc', 'Slave 1 SOC', 'value.battery', '%');
-	await ensureNumber(adapter, 'status.slave2_soc', 'Slave 2 SOC', 'value.battery', '%');
-	await ensureNumber(adapter, 'status.slave3_soc', 'Slave 3 SOC', 'value.battery', '%');
-	await ensureNumber(adapter, 'status.slave4_soc', 'Slave 4 SOC', 'value.battery', '%');
-	await ensureNumber(adapter, 'status.slave5_soc', 'Slave 5 SOC', 'value.battery', '%');
-	await ensureNumber(adapter, 'status.slave6_soc', 'Slave 6 SOC', 'value.battery', '%');
-	await ensureNumber(adapter, 'status.slave7_soc', 'Slave 7 SOC', 'value.battery', '%');
 
-	// BMS limits
+	for (let i = 1; i <= 7; i++) {
+		await ensureNumber(adapter, `status.slave${i}_soc`, `Slave ${i} SOC`, 'value.battery', '%');
+	}
+}
+
+async function ensureBmsLimitStates(adapter: ioBroker.Adapter): Promise<void> {
 	await ensureNumber(adapter, 'status.main_bms_min', 'Main BMS min limit', 'value', '%');
 	await ensureNumber(adapter, 'status.main_bms_max', 'Main BMS max limit', 'value', '%');
-	await ensureNumber(adapter, 'status.slave1_bms_min', 'Slave 1 BMS min', 'value', '%');
-	await ensureNumber(adapter, 'status.slave1_bms_max', 'Slave 1 BMS max', 'value', '%');
-	await ensureNumber(adapter, 'status.slave2_bms_min', 'Slave 2 BMS min', 'value', '%');
-	await ensureNumber(adapter, 'status.slave2_bms_max', 'Slave 2 BMS max', 'value', '%');
-	await ensureNumber(adapter, 'status.slave3_bms_min', 'Slave 3 BMS min', 'value', '%');
-	await ensureNumber(adapter, 'status.slave3_bms_max', 'Slave 3 BMS max', 'value', '%');
-	await ensureNumber(adapter, 'status.slave4_bms_min', 'Slave 4 BMS min', 'value', '%');
-	await ensureNumber(adapter, 'status.slave4_bms_max', 'Slave 4 BMS max', 'value', '%');
-	await ensureNumber(adapter, 'status.slave5_bms_min', 'Slave 5 BMS min', 'value', '%');
-	await ensureNumber(adapter, 'status.slave5_bms_max', 'Slave 5 BMS max', 'value', '%');
-	await ensureNumber(adapter, 'status.slave6_bms_min', 'Slave 6 BMS min', 'value', '%');
-	await ensureNumber(adapter, 'status.slave6_bms_max', 'Slave 6 BMS max', 'value', '%');
-	await ensureNumber(adapter, 'status.slave7_bms_min', 'Slave 7 BMS min', 'value', '%');
-	await ensureNumber(adapter, 'status.slave7_bms_max', 'Slave 7 BMS max', 'value', '%');
 
-	// Config (RW) + Limits
+	for (let i = 1; i <= 7; i++) {
+		await ensureNumber(adapter, `status.slave${i}_bms_min`, `Slave ${i} BMS min`, 'value', '%');
+		await ensureNumber(adapter, `status.slave${i}_bms_max`, `Slave ${i} BMS max`, 'value', '%');
+	}
+}
+
+async function ensureConfigStates(adapter: ioBroker.Adapter): Promise<void> {
 	await ensureNumber(
 		adapter,
 		'config.system_discharge_limit',
@@ -119,6 +117,7 @@ export async function ensureObjects(adapter: ioBroker.Adapter): Promise<void> {
 		100,
 		1,
 	);
+
 	await ensureNumber(adapter, 'config.home_discharge_cutoff', 'Home discharge cutoff', 'level', '%', true, 5, 20, 1);
 	await ensureNumber(adapter, 'config.car_discharge_cutoff', 'Car discharge cutoff', 'level', '%', true, 5, 40, 1);
 	await ensureNumber(
@@ -155,11 +154,92 @@ export async function ensureObjects(adapter: ioBroker.Adapter): Promise<void> {
 		1440,
 		1,
 	);
+}
 
-	// Modes (RW)
+async function ensureModeStates(adapter: ioBroker.Adapter): Promise<void> {
 	await ensureBool(adapter, 'modes.local_mode', 'Local mode', true);
 	await ensureBool(adapter, 'modes.battery_charging_mode', 'Battery charging mode', true);
 	await ensureBool(adapter, 'modes.car_charging_mode', 'Car charging mode', true);
 	await ensureBool(adapter, 'modes.home_appliance_mode', 'Home appliance mode', true);
 	await ensureBool(adapter, 'modes.ac_active_mode', 'AC active mode', true);
+}
+
+async function ensureEnergyStates(adapter: ioBroker.Adapter): Promise<void> {
+	await ensureNumber(adapter, 'status.input_power_total', 'Total input power', 'value.power', 'W');
+	await ensureNumber(adapter, 'status.output_power_total', 'Total output power', 'value.power', 'W');
+
+	await ensureNumber(adapter, 'status.energy_generated_day', 'Generated energy today', 'value.energy', 'kWh');
+	await ensureNumber(adapter, 'status.energy_output_day', 'Output energy today', 'value.energy', 'kWh');
+	await ensureNumber(adapter, 'status.ac_charge_energy_day', 'AC charge energy today', 'value.energy', 'kWh');
+
+	await ensureNumber(adapter, 'status.ac_input_power', 'AC input power', 'value.power', 'W');
+	await ensureNumber(adapter, 'status.car_charging_power', 'Car charging mode power', 'value.power', 'W');
+	await ensureNumber(adapter, 'status.home_mode_power', 'Home appliance mode power', 'value.power', 'W');
+}
+
+async function ensurePvStates(adapter: ioBroker.Adapter): Promise<void> {
+	for (let i = 1; i <= 9; i++) {
+		await ensureNumber(adapter, `status.pv${i}_input_power`, `PV${i} input power`, 'value.power', 'W');
+	}
+}
+
+async function ensureTemperatureStates(adapter: ioBroker.Adapter): Promise<void> {
+	await ensureNumber(adapter, 'status.main_cell_temp', 'Main battery cell temperature', 'value.temperature', '°C');
+
+	for (let i = 1; i <= 7; i++) {
+		await ensureNumber(adapter, `status.slave${i}_cell_temp`, `Slave ${i} cell temperature`, 'value.temperature', '°C');
+	}
+}
+
+async function ensureMpptStates(adapter: ioBroker.Adapter): Promise<void> {
+	await ensureNumber(adapter, 'status.main_mppt1_current', 'Main MPPT1 current', 'value.current', 'A');
+	await ensureNumber(adapter, 'status.main_mppt1_voltage', 'Main MPPT1 voltage', 'value.voltage', 'V');
+	await ensureNumber(adapter, 'status.main_mppt2_current', 'Main MPPT2 current', 'value.current', 'A');
+	await ensureNumber(adapter, 'status.main_mppt2_voltage', 'Main MPPT2 voltage', 'value.voltage', 'V');
+
+	for (let i = 1; i <= 7; i++) {
+		await ensureNumber(adapter, `status.slave${i}_mppt_current`, `Slave ${i} MPPT current`, 'value.current', 'A');
+		await ensureNumber(adapter, `status.slave${i}_mppt_voltage`, `Slave ${i} MPPT voltage`, 'value.voltage', 'V');
+	}
+}
+
+async function ensureHeaterStates(adapter: ioBroker.Adapter): Promise<void> {
+	await ensureBool(adapter, 'status.main_heater_active', 'Main battery heater active');
+
+	for (let i = 1; i <= 7; i++) {
+		await ensureBool(adapter, `status.slave${i}_heater_active`, `Slave ${i} heater active`);
+	}
+}
+
+async function ensureDiagnosticStates(adapter: ioBroker.Adapter): Promise<void> {
+	await ensureNumber(adapter, 'info.lastUpdate', 'Last update', 'value.time');
+	await ensureText(adapter, 'info.lastError', 'Last error');
+	await ensureText(adapter, 'info.endpoint', 'Endpoint');
+	await ensureBool(adapter, 'info.connection', 'Connection');
+	await ensureBool(adapter, 'info.readOnly', 'Read-only');
+	await ensureNumber(adapter, 'info.rssi', 'Wireless RSSI', 'value.signal', 'dB');
+	await ensureText(adapter, 'status.raw_message', 'Last raw message');
+}
+
+/**
+ * Ensures all required objects/states exist in ioBroker.
+ *
+ * @param adapter The adapter instance
+ */
+export async function ensureObjects(adapter: ioBroker.Adapter): Promise<void> {
+	await ensureChannel(adapter, 'info', 'Info');
+	await ensureChannel(adapter, 'status', 'Status');
+	await ensureChannel(adapter, 'config', 'Configuration');
+	await ensureChannel(adapter, 'modes', 'Modes');
+
+	await ensureDiagnosticStates(adapter);
+	await ensureBatterySocStates(adapter);
+	await ensureBmsLimitStates(adapter);
+	await ensureConfigStates(adapter);
+	await ensureModeStates(adapter);
+	await ensureEnergyStates(adapter);
+	await ensurePvStates(adapter);
+	await ensureTemperatureStates(adapter);
+	await ensureMpptStates(adapter);
+	await ensureHeaterStates(adapter);
 }
