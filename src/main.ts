@@ -228,7 +228,7 @@ class bk215_localAdapter extends utils.Adapter {
 		}
 
 		if (isAck(msg.code)) {
-			await this.handleAckMessage(msg);
+			this.handleAckMessage(msg);
 			return;
 		}
 
@@ -246,7 +246,7 @@ class bk215_localAdapter extends utils.Adapter {
 		}
 	}
 
-	private async handleAckMessage(msg: DeviceMessage): Promise<void> {
+	private handleAckMessage(msg: DeviceMessage): void {
 		const data = msg.data || {};
 
 		// handshake ACK: {"code":0,"data":{}}

@@ -187,7 +187,13 @@ async function ensureTemperatureStates(adapter: ioBroker.Adapter): Promise<void>
 	await ensureNumber(adapter, 'status.main_cell_temp', 'Main battery cell temperature', 'value.temperature', '°C');
 
 	for (let i = 1; i <= 7; i++) {
-		await ensureNumber(adapter, `status.slave${i}_cell_temp`, `Slave ${i} cell temperature`, 'value.temperature', '°C');
+		await ensureNumber(
+			adapter,
+			`status.slave${i}_cell_temp`,
+			`Slave ${i} cell temperature`,
+			'value.temperature',
+			'°C',
+		);
 	}
 }
 

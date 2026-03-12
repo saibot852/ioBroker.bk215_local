@@ -135,14 +135,62 @@ const TEMP_READ_MAP: ReadStateMapEntry[] = [
 ];
 
 const HEATER_READ_MAP: ReadStateMapEntry[] = [
-	{ stateId: 'status.main_heater_active', field: Field.HEATER_WORKING_STATUS, type: 'boolean', transform: 'bit', bit: 0 },
-	{ stateId: 'status.slave1_heater_active', field: Field.HEATER_WORKING_STATUS, type: 'boolean', transform: 'bit', bit: 1 },
-	{ stateId: 'status.slave2_heater_active', field: Field.HEATER_WORKING_STATUS, type: 'boolean', transform: 'bit', bit: 2 },
-	{ stateId: 'status.slave3_heater_active', field: Field.HEATER_WORKING_STATUS, type: 'boolean', transform: 'bit', bit: 3 },
-	{ stateId: 'status.slave4_heater_active', field: Field.HEATER_WORKING_STATUS, type: 'boolean', transform: 'bit', bit: 4 },
-	{ stateId: 'status.slave5_heater_active', field: Field.HEATER_WORKING_STATUS, type: 'boolean', transform: 'bit', bit: 5 },
-	{ stateId: 'status.slave6_heater_active', field: Field.HEATER_WORKING_STATUS, type: 'boolean', transform: 'bit', bit: 6 },
-	{ stateId: 'status.slave7_heater_active', field: Field.HEATER_WORKING_STATUS, type: 'boolean', transform: 'bit', bit: 7 },
+	{
+		stateId: 'status.main_heater_active',
+		field: Field.HEATER_WORKING_STATUS,
+		type: 'boolean',
+		transform: 'bit',
+		bit: 0,
+	},
+	{
+		stateId: 'status.slave1_heater_active',
+		field: Field.HEATER_WORKING_STATUS,
+		type: 'boolean',
+		transform: 'bit',
+		bit: 1,
+	},
+	{
+		stateId: 'status.slave2_heater_active',
+		field: Field.HEATER_WORKING_STATUS,
+		type: 'boolean',
+		transform: 'bit',
+		bit: 2,
+	},
+	{
+		stateId: 'status.slave3_heater_active',
+		field: Field.HEATER_WORKING_STATUS,
+		type: 'boolean',
+		transform: 'bit',
+		bit: 3,
+	},
+	{
+		stateId: 'status.slave4_heater_active',
+		field: Field.HEATER_WORKING_STATUS,
+		type: 'boolean',
+		transform: 'bit',
+		bit: 4,
+	},
+	{
+		stateId: 'status.slave5_heater_active',
+		field: Field.HEATER_WORKING_STATUS,
+		type: 'boolean',
+		transform: 'bit',
+		bit: 5,
+	},
+	{
+		stateId: 'status.slave6_heater_active',
+		field: Field.HEATER_WORKING_STATUS,
+		type: 'boolean',
+		transform: 'bit',
+		bit: 6,
+	},
+	{
+		stateId: 'status.slave7_heater_active',
+		field: Field.HEATER_WORKING_STATUS,
+		type: 'boolean',
+		transform: 'bit',
+		bit: 7,
+	},
 ];
 
 const MPPT_READ_MAP: ReadStateMapEntry[] = [

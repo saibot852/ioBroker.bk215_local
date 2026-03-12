@@ -126,6 +126,8 @@ export function parseJsonStream(rx: string): ParseResult {
 
 /**
  * Returns true if a device message is a data report.
+ *
+ * @param msg
  */
 export function isDataReport(msg: DeviceMessage): boolean {
 	return (
@@ -137,24 +139,17 @@ export function isDataReport(msg: DeviceMessage): boolean {
 
 /**
  * Safely read a raw field value from a device message.
+ *
+ * @param msg
+ * @param field
  */
 export function getFieldValue(msg: DeviceMessage, field: string): unknown {
 	return msg.data?.[field];
 }
 
 /**
- * Returns true if the raw value should be treated as unavailable / invalid.
- */
-function isUnavailableRawValue(num: number): boolean {
-	return !Number.isFinite(num) || num === UNAVAILABLE_VALUE || num === -1;
-}
-
-/**
  * Transform raw device values into ioBroker state values.
  */
-function round1(value: number): number {
-	return Math.round(value * 10) / 10;
-}
 
 export function transformReadValue(entry: ReadStateMapEntry, raw: unknown): number | boolean | null {
 	if (raw === undefined || raw === null) {
@@ -201,24 +196,26 @@ export function transformReadValue(entry: ReadStateMapEntry, raw: unknown): numb
 	}
 
 	if (typeof value === 'number') {
-	switch (entry.transform) {
-		case 'x0.001': // energy
-			value = Math.round(value * 1000) / 1000;
-			break;
-		case 'temp273':
-		case 'x0.1':
-			value = Math.round(value * 10) / 10;
-			break;
-		default:
-			value = Math.round(value);
+		switch (entry.transform) {
+			case 'x0.001': // energy
+				value = Math.round(value * 1000) / 1000;
+				break;
+			case 'temp273':
+			case 'x0.1':
+				value = Math.round(value * 10) / 10;
+				break;
+			default:
+				value = Math.round(value);
+		}
 	}
-}
 
 	return value;
 }
 
 /**
  * Extract ioBroker state updates from a DATA_REPORT message.
+ *
+ * @param msg
  */
 export function extractStateUpdates(msg: DeviceMessage): ParsedStateUpdate[] {
 	if (!isDataReport(msg) || !msg.data) {
