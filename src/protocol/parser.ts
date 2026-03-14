@@ -22,7 +22,9 @@ export type ParseResult = {
  * A parsed ioBroker state update derived from a device data report.
  */
 export type ParsedStateUpdate = {
+	/** ioBroker state id to update. */
 	stateId: string;
+	/** Parsed and transformed state value. */
 	value: number | boolean;
 };
 
@@ -127,7 +129,8 @@ export function parseJsonStream(rx: string): ParseResult {
 /**
  * Returns true if a device message is a data report.
  *
- * @param msg
+ * @param msg - Parsed device message
+ * @returns True if the message code is a supported data report
  */
 export function isDataReport(msg: DeviceMessage): boolean {
 	return (
@@ -140,17 +143,21 @@ export function isDataReport(msg: DeviceMessage): boolean {
 /**
  * Safely read a raw field value from a device message.
  *
- * @param msg
- * @param field
+ * @param msg - Parsed device message
+ * @param field - Device field id such as t211 or t598
+ * @returns Raw field value if present
  */
 export function getFieldValue(msg: DeviceMessage, field: string): unknown {
 	return msg.data?.[field];
 }
 
 /**
- * Transform raw device values into ioBroker state values.
+ * Transform a raw device value into an ioBroker-compatible state value.
+ *
+ * @param entry - Read mapping entry describing type and transform
+ * @param raw - Raw value from the device payload
+ * @returns Parsed value or null if unavailable/invalid
  */
-
 export function transformReadValue(entry: ReadStateMapEntry, raw: unknown): number | boolean | null {
 	if (raw === undefined || raw === null) {
 		return null;
@@ -197,7 +204,7 @@ export function transformReadValue(entry: ReadStateMapEntry, raw: unknown): numb
 
 	if (typeof value === 'number') {
 		switch (entry.transform) {
-			case 'x0.001': // energy
+			case 'x0.001':
 				value = Math.round(value * 1000) / 1000;
 				break;
 			case 'temp273':
@@ -213,9 +220,10 @@ export function transformReadValue(entry: ReadStateMapEntry, raw: unknown): numb
 }
 
 /**
- * Extract ioBroker state updates from a DATA_REPORT message.
+ * Extract ioBroker state updates from a supported data report message.
  *
- * @param msg
+ * @param msg - Parsed device message
+ * @returns List of state updates ready to be written to ioBroker
  */
 export function extractStateUpdates(msg: DeviceMessage): ParsedStateUpdate[] {
 	if (!isDataReport(msg) || !msg.data) {

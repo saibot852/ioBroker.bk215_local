@@ -5,9 +5,7 @@
 	"title": "bk215_local",
 	"description": "bk215_local Local mode",
 	"expert": "no",
-	"features": [
-		"adapter"
-	],
+	"features": ["adapter"],
 	"adminFeatures": [],
 	"type": "household",
 	"startMode": "daemon",
@@ -17,10 +15,7 @@
 	"language": "JavaScript",
 	"nodeVersion": "20",
 	"adminUi": "json",
-	"tools": [
-		"ESLint",
-		"type checking"
-	],
+	"tools": ["ESLint", "type checking"],
 	"eslintConfig": "official",
 	"releaseScript": "yes",
 	"devServer": "local",

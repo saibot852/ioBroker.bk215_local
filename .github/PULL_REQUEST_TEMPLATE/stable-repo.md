@@ -11,7 +11,8 @@ assignees: ''
 [ ] Please add a link to Forum testing thread, if existing.
 
 **What will happen after creating this request?**
-* We will do a short additional review of your adapter
-* After this we add the adapter to the stable repository
+
+- We will do a short additional review of your adapter
+- After this we add the adapter to the stable repository
 
 Thank you for your new adapter in ioBroker!

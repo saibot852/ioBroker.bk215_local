@@ -5,6 +5,8 @@ dist/
 *.tgz
 .idea/
 .vscode/
+.archive/
+localNpmRepo/
 
 # npm package files
 iobroker.*.tgz

@@ -98,6 +98,8 @@ function parseJsonStream(rx) {
 }
 /**
  * Returns true if a device message is a data report.
+ *
+ * @param msg
  */
 function isDataReport(msg) {
     return (msg.code === constants_1.MessageCode.DATA_REPORT ||
@@ -106,22 +108,16 @@ function isDataReport(msg) {
 }
 /**
  * Safely read a raw field value from a device message.
+ *
+ * @param msg
+ * @param field
  */
 function getFieldValue(msg, field) {
     return msg.data?.[field];
 }
 /**
- * Returns true if the raw value should be treated as unavailable / invalid.
- */
-function isUnavailableRawValue(num) {
-    return !Number.isFinite(num) || num === constants_1.UNAVAILABLE_VALUE || num === -1;
-}
-/**
  * Transform raw device values into ioBroker state values.
  */
-function round1(value) {
-    return Math.round(value * 10) / 10;
-}
 function transformReadValue(entry, raw) {
     if (raw === undefined || raw === null) {
         return null;
@@ -173,6 +169,8 @@ function transformReadValue(entry, raw) {
 }
 /**
  * Extract ioBroker state updates from a DATA_REPORT message.
+ *
+ * @param msg
  */
 function extractStateUpdates(msg) {
     if (!isDataReport(msg) || !msg.data) {

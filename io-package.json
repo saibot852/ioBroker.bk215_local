@@ -1,50 +1,41 @@
 {
-  "common": {
-    "name": "bk215_local",
-    "version": "1.0.3",
-    "adminUI": { "config": "json" },
-    "news": {
-      "1.0.0": {
-        "en": "First public release",
-        "de": "Erstes öffentliches Release"
-      }
-    },
-    "titleLang": {
-      "en": "Adapter for BK215 (SunEnergy XT) devices without cloud dependency",
-      "de": "Adapter für BK215 (SunEnergy XT) Geräte ohne Cloud"
-    },
-    "descLang": {
-      "en": "Local TCP adapter for BK215 (SunEnergy XT) devices without cloud dependency.",
-      "de": "Lokaler TCP Adapter für BK215 (SunEnergy XT) Geräte ohne Cloud-Abhängigkeit."
-    },
-    "authors": [
-      "Tobias <petrasch.tobias@t-online.de>"
-    ],
-    "license": "MIT",
-    "platform": "Javascript/Node.js",
-    "mode": "daemon",
-    "icon": "admin/bk215_local.png",
-    "keywords": [
-      "iobroker",
-      "bk215",
-      "battery",
-      "energy",
-      "tcp",
-      "local"
-    ],
-    "extIcon": "https://raw.githubusercontent.com/saibot852/ioBroker.bk215_local/main/admin/bk215_local.png",
-    "readme": "https://github.com/saibot852/ioBroker.bk215_local/blob/main/README.md",
-    "type": "energy",
-    "connectionType": "local",
-    "dataSource": "poll"
-  },
-  "native": {
-    "host": "",
-    "port": 8000,
-    "timeout": 5000,
-    "readOnly": false,
-    "debug": false
-  },
-  "objects": [],
-  "instanceObjects": []
+	"common": {
+		"name": "bk215_local",
+		"version": "1.0.4",
+		"adminUI": { "config": "json" },
+		"news": {
+			"1.0.0": {
+				"en": "First public release",
+				"de": "Erstes öffentliches Release"
+			}
+		},
+		"titleLang": {
+			"en": "Adapter for BK215 (SunEnergy XT) devices without cloud dependency",
+			"de": "Adapter für BK215 (SunEnergy XT) Geräte ohne Cloud"
+		},
+		"descLang": {
+			"en": "Local TCP adapter for BK215 (SunEnergy XT) devices without cloud dependency.",
+			"de": "Lokaler TCP Adapter für BK215 (SunEnergy XT) Geräte ohne Cloud-Abhängigkeit."
+		},
+		"authors": ["Tobias <petrasch.tobias@t-online.de>"],
+		"license": "MIT",
+		"platform": "Javascript/Node.js",
+		"mode": "daemon",
+		"icon": "admin/bk215_local.png",
+		"keywords": ["iobroker", "bk215", "battery", "energy", "tcp", "local"],
+		"extIcon": "https://raw.githubusercontent.com/saibot852/ioBroker.bk215_local/main/admin/bk215_local.png",
+		"readme": "https://github.com/saibot852/ioBroker.bk215_local/blob/main/README.md",
+		"type": "energy",
+		"connectionType": "local",
+		"dataSource": "poll"
+	},
+	"native": {
+		"host": "",
+		"port": 8000,
+		"timeout": 5000,
+		"readOnly": false,
+		"debug": false
+	},
+	"objects": [],
+	"instanceObjects": []
 }

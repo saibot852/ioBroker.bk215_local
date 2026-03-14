@@ -40,6 +40,10 @@ class bk215_localAdapter extends utils.Adapter {
 	private connectInProgress = false;
 	private isShuttingDown = false;
 
+	private lastReportTs = 0;
+	private reportWatchdogTimer: ReturnType<typeof setInterval> | null = null;
+	private handshakeRetryTimer: ReturnType<typeof setTimeout> | null = null;
+
 	public constructor(options: Partial<utils.AdapterOptions> = {}) {
 		super({
 			...options,
@@ -60,6 +64,7 @@ class bk215_localAdapter extends utils.Adapter {
 		this.cfgReadOnly = !!cfg.readOnly;
 		this.cfgDebug = !!cfg.debug;
 		this.isShuttingDown = false;
+		this.lastReportTs = 0;
 
 		await ensureObjects(this);
 
@@ -84,8 +89,10 @@ class bk215_localAdapter extends utils.Adapter {
 
 		this.reconnectDelayMs = 5000;
 		this.clearReconnectTimer();
+		this.clearHandshakeRetryTimer();
 		this.createTcpClient();
 		this.connectTcp();
+		this.startReportWatchdog();
 
 		this.log.info(`bk215_local TCP Adapter gestartet (${this.deviceHost}:${this.devicePort}).`);
 	}
@@ -183,13 +190,28 @@ class bk215_localAdapter extends utils.Adapter {
 
 	private async onTcpConnected(): Promise<void> {
 		this.clearReconnectTimer();
+		this.clearHandshakeRetryTimer();
 		this.reconnectDelayMs = 5000;
 
-		await this.safeSetState('info.connection', true);
+		await this.safeSetState('info.connection', false);
 		await this.safeSetState('info.endpoint', `${this.deviceHost}:${this.devicePort}`);
 		await this.safeSetState('info.lastError', '');
 
-		this.log.info('TCP connected.');
+		this.log.info('TCP socket connected (waiting for first DATA_REPORT).');
+
+		this.handshakeRetryTimer = setTimeout(() => {
+			if (!this.tcp || !this.tcp.isConnected()) {
+				return;
+			}
+
+			const age = this.lastReportTs > 0 ? Date.now() - this.lastReportTs : Number.MAX_SAFE_INTEGER;
+			if (this.lastReportTs === 0 || age > 10000) {
+				if (this.cfgDebug) {
+					this.log.debug('No report after reconnect, sending handshake again');
+				}
+				this.tcp.sendHandshake();
+			}
+		}, 3000);
 	}
 
 	private async onTcpDisconnected(reason: string): Promise<void> {
@@ -197,8 +219,55 @@ class bk215_localAdapter extends utils.Adapter {
 		await this.safeSetState('info.endpoint', 'Keine Verbindung');
 		await this.safeSetState('info.lastError', reason);
 
+		this.clearHandshakeRetryTimer();
 		this.failAllPending(new Error(reason));
 		this.log.warn(`TCP disconnected: ${reason}`);
+	}
+
+	private startReportWatchdog(): void {
+		this.clearReportWatchdog();
+
+		this.reportWatchdogTimer = setInterval(() => {
+			if (this.isShuttingDown) {
+				return;
+			}
+			if (!this.tcp || !this.tcp.isConnected()) {
+				return;
+			}
+
+			const now = Date.now();
+			const age = this.lastReportTs > 0 ? now - this.lastReportTs : Number.MAX_SAFE_INTEGER;
+
+			if (age > 45000) {
+				this.log.warn(`No data report received for ${Math.round(age / 1000)}s, forcing reconnect`);
+
+				try {
+					this.tcp.destroy();
+				} catch {
+					// ignore
+				}
+
+				this.tcp = null;
+				this.connectInProgress = false;
+				void this.onTcpDisconnected('No data reports received');
+				this.createTcpClient();
+				this.scheduleReconnect();
+			}
+		}, 10000);
+	}
+
+	private clearReportWatchdog(): void {
+		if (this.reportWatchdogTimer) {
+			clearInterval(this.reportWatchdogTimer);
+			this.reportWatchdogTimer = null;
+		}
+	}
+
+	private clearHandshakeRetryTimer(): void {
+		if (this.handshakeRetryTimer) {
+			clearTimeout(this.handshakeRetryTimer);
+			this.handshakeRetryTimer = null;
+		}
 	}
 
 	private onUnload(callback: () => void): void {
@@ -206,6 +275,8 @@ class bk215_localAdapter extends utils.Adapter {
 			this.isShuttingDown = true;
 			this.connectInProgress = false;
 			this.clearReconnectTimer();
+			this.clearReportWatchdog();
+			this.clearHandshakeRetryTimer();
 			this.failAllPending(new Error('Adapter unloading'));
 
 			try {
@@ -249,7 +320,6 @@ class bk215_localAdapter extends utils.Adapter {
 	private handleAckMessage(msg: DeviceMessage): void {
 		const data = msg.data || {};
 
-		// handshake ACK: {"code":0,"data":{}}
 		if (!Object.keys(data).length) {
 			if (this.cfgDebug) {
 				this.log.debug('Handshake ACK received.');
@@ -257,7 +327,6 @@ class bk215_localAdapter extends utils.Adapter {
 			return;
 		}
 
-		// command ACK: {"code":0x6040,"data":{"tXXX":0}}
 		for (const [field, rcRaw] of Object.entries(data)) {
 			const p = this.pending.get(field);
 			if (!p) {
@@ -277,6 +346,15 @@ class bk215_localAdapter extends utils.Adapter {
 	}
 
 	private async handleDataReport(msg: DeviceMessage): Promise<void> {
+		this.lastReportTs = Date.now();
+		this.clearHandshakeRetryTimer();
+
+		const currentConnectionState = await this.getStateAsync('info.connection');
+		if (!currentConnectionState?.val) {
+			await this.safeSetState('info.connection', true);
+			this.log.info('First DATA_REPORT received -> connection is considered OK.');
+		}
+
 		const updates = extractStateUpdates(msg);
 
 		for (const update of updates) {
@@ -401,7 +479,6 @@ class bk215_localAdapter extends utils.Adapter {
 			return n;
 		}
 
-		// booleans (modes.*)
 		return val ? 1 : 0;
 	}
 

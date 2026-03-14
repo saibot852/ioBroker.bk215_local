@@ -10,25 +10,25 @@ name: Set labels
 # labeling of PR is possible.
 #
 on:
-  pull_request_target:
-    types: [opened, edited, ready_for_review, reopened, labeled, unlabeled]
-  issue_comment:
-    types: [created, edited]
+    pull_request_target:
+        types: [opened, edited, ready_for_review, reopened, labeled, unlabeled]
+    issue_comment:
+        types: [created, edited]
 
 jobs:
-  setLabels:
-    name: set labels
-    if: |
-      github.repository == 'ioBroker/ioBroker.repositories'
+    setLabels:
+        name: set labels
+        if: |
+            github.repository == 'ioBroker/ioBroker.repositories'
 
-    runs-on: ubuntu-latest
+        runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-      - run: npm i
-      - run: npm run setLabels
-        env:
-          OWN_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        steps:
+            - uses: actions/checkout@v6
+            - uses: actions/setup-node@v6
+              with:
+                  node-version: 22
+            - run: npm i
+            - run: npm run setLabels
+              env:
+                  OWN_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

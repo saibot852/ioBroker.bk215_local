@@ -19,9 +19,9 @@ export default [
 			'admin/blockly.js',
 			'**/adapter-config.d.ts',
 			'widgets/**/*.js',
- 			"lib/**",
-			"localNpmRepo/**",
-			"node_modules/**"
+			'lib/**',
+			'localNpmRepo/**',
+			'node_modules/**',
 		],
 	},
 	{

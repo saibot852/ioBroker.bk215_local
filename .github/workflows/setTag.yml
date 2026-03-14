@@ -2,30 +2,30 @@ name: Set tag
 
 # set tag
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        type: choice
-        description: select tag to set
-        options:
-          - dev
-          - latest
-          - next
-          - stable
-        required: true
-      adapter:
-        type: string
-        required: true
-      release:
-        type: string
-        required: true
+    workflow_dispatch:
+        inputs:
+            tag:
+                type: choice
+                description: select tag to set
+                options:
+                    - dev
+                    - latest
+                    - next
+                    - stable
+                required: true
+            adapter:
+                type: string
+                required: true
+            release:
+                type: string
+                required: true
 
 jobs:
-  set-tag:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-      - run: npm  dist-tag list iobroker.${{ github.event.inputs.adapter }}
-      - run: npm --//registry.npmjs.org/:_authToken=${{secrets.NPM_TAG}} dist-tag add iobroker.${{ github.event.inputs.adapter }}@${{ github.event.inputs.release }} ${{ github.event.inputs.tag }}
+    set-tag:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/setup-node@v6
+              with:
+                  node-version: 22
+            - run: npm  dist-tag list iobroker.${{ github.event.inputs.adapter }}
+            - run: npm --//registry.npmjs.org/:_authToken=${{secrets.NPM_TAG}} dist-tag add iobroker.${{ github.event.inputs.adapter }}@${{ github.event.inputs.release }} ${{ github.event.inputs.tag }}

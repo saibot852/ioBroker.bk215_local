@@ -14,8 +14,9 @@ assignees: ''
 [ ] Please add a link to Forum testing thread, if existing.
 
 **What will happen after creating this request?**
-* We will review your adapter and give you feedback, this can need some time
-* After this we add the adapter to the latest repository
-* Once you got feedback please also add request to add to Stable repository
+
+- We will review your adapter and give you feedback, this can need some time
+- After this we add the adapter to the latest repository
+- Once you got feedback please also add request to add to Stable repository
 
 Thank you for your new adapter in ioBroker!

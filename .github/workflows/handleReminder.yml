@@ -4,17 +4,17 @@
 name: Handle Reminder
 
 on:
-  pull_request_target:
-    types: [labeled]
+    pull_request_target:
+        types: [labeled]
 
-  issue_comment:
+    issue_comment:
 
-  workflow_dispatch:
+    workflow_dispatch:
 
-  schedule:
-    # * is a special character in YAML, so you have to quote this string
-    # every day
-    - cron:  '0 1 * * *'
+    schedule:
+        # * is a special character in YAML, so you have to quote this string
+        # every day
+        - cron: '0 1 * * *'
 
 # avoid concurrengt runs
 #concurrency:
@@ -22,19 +22,19 @@ on:
 #  cancel-in-progress: true
 
 jobs:
-  handleReminder:
-    name: handlereminder
-    if: |
-      github.repository == 'ioBroker/ioBroker.repositories'
+    handleReminder:
+        name: handlereminder
+        if: |
+            github.repository == 'ioBroker/ioBroker.repositories'
 
-    runs-on: ubuntu-latest
+        runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-      - run: npm i
-      - run: npm run handleReminder
-        env:
-          OWN_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        steps:
+            - uses: actions/checkout@v6
+            - uses: actions/setup-node@v6
+              with:
+                  node-version: 22
+            - run: npm i
+            - run: npm run handleReminder
+              env:
+                  OWN_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

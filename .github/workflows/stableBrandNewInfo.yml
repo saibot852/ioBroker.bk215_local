@@ -10,23 +10,23 @@ name: Stable Brand-New Info
 # labeling of PR is possible.
 #
 on:
-  pull_request_target:
-    types: [labeled, unlabeled]
+    pull_request_target:
+        types: [labeled, unlabeled]
 
 jobs:
-  stableBrandNewInfo:
-    name: stable brand new info
-    if: |
-      github.repository == 'ioBroker/ioBroker.repositories'
+    stableBrandNewInfo:
+        name: stable brand new info
+        if: |
+            github.repository == 'ioBroker/ioBroker.repositories'
 
-    runs-on: ubuntu-latest
+        runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-      - run: npm i
-      - run: npm run stableBrandNewInfo
-        env:
-          OWN_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        steps:
+            - uses: actions/checkout@v6
+            - uses: actions/setup-node@v6
+              with:
+                  node-version: 22
+            - run: npm i
+            - run: npm run stableBrandNewInfo
+              env:
+                  OWN_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
