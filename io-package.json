@@ -6,8 +6,8 @@
       "config": "json"
     },
     "titleLang": {
-      "en": "Adapter for BK215/BK215 Plus (SunEnergy XT)",
-      "de": "Adapter für BK215/BK215 Plus (SunEnergy XT)"
+      "en": "BK215/BK215 Plus (SunEnergy XT)",
+      "de": "BK215/BK215 Plus (SunEnergy XT)"
     },
     "desc": {
       "en": "Local TCP adapter for BK215/BK215 Plus (SunEnergy XT) energy storage devices.",
