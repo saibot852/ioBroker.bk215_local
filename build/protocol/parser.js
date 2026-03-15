@@ -99,7 +99,8 @@ function parseJsonStream(rx) {
 /**
  * Returns true if a device message is a data report.
  *
- * @param msg
+ * @param msg - Parsed device message
+ * @returns True if the message code is a supported data report
  */
 function isDataReport(msg) {
     return (msg.code === constants_1.MessageCode.DATA_REPORT ||
@@ -109,14 +110,19 @@ function isDataReport(msg) {
 /**
  * Safely read a raw field value from a device message.
  *
- * @param msg
- * @param field
+ * @param msg - Parsed device message
+ * @param field - Device field id such as t211 or t598
+ * @returns Raw field value if present
  */
 function getFieldValue(msg, field) {
     return msg.data?.[field];
 }
 /**
- * Transform raw device values into ioBroker state values.
+ * Transform a raw device value into an ioBroker-compatible state value.
+ *
+ * @param entry - Read mapping entry describing type and transform
+ * @param raw - Raw value from the device payload
+ * @returns Parsed value or null if unavailable/invalid
  */
 function transformReadValue(entry, raw) {
     if (raw === undefined || raw === null) {
@@ -154,10 +160,12 @@ function transformReadValue(entry, raw) {
     }
     if (typeof value === 'number') {
         switch (entry.transform) {
-            case 'x0.001': // energy
+            case 'x0.001':
                 value = Math.round(value * 1000) / 1000;
                 break;
             case 'temp273':
+                value = Math.round(value);
+                break;
             case 'x0.1':
                 value = Math.round(value * 10) / 10;
                 break;
@@ -168,9 +176,10 @@ function transformReadValue(entry, raw) {
     return value;
 }
 /**
- * Extract ioBroker state updates from a DATA_REPORT message.
+ * Extract ioBroker state updates from a supported data report message.
  *
- * @param msg
+ * @param msg - Parsed device message
+ * @returns List of state updates ready to be written to ioBroker
  */
 function extractStateUpdates(msg) {
     if (!isDataReport(msg) || !msg.data) {

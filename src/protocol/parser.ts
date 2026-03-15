@@ -208,6 +208,8 @@ export function transformReadValue(entry: ReadStateMapEntry, raw: unknown): numb
 				value = Math.round(value * 1000) / 1000;
 				break;
 			case 'temp273':
+				value = Math.round(value);
+				break;
 			case 'x0.1':
 				value = Math.round(value * 10) / 10;
 				break;

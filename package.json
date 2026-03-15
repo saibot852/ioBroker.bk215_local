@@ -1,7 +1,7 @@
 {
 	"name": "iobroker.bk215_local",
-	"version": "1.0.4",
-	"description": "BK215 Local (unofficial)",
+	"version": "1.0.5",
+	"description": "BK215/BK215 Plus Local (unofficial)",
 	"author": {
 		"name": "saibot852",
 		"email": "petrasch.tobias@t-online.de"
@@ -14,7 +14,9 @@
 		"IoT",
 		"integration",
 		"bk215_local",
-		"bk215"
+		"bk215",
+		"sunernergyxt",
+		"sunlit"
 	],
 	"repository": {
 		"type": "git",

@@ -1,41 +1,90 @@
 {
-	"common": {
-		"name": "bk215_local",
-		"version": "1.0.4",
-		"adminUI": { "config": "json" },
-		"news": {
-			"1.0.0": {
-				"en": "First public release",
-				"de": "Erstes öffentliches Release"
-			}
-		},
-		"titleLang": {
-			"en": "Adapter for BK215 (SunEnergy XT) devices without cloud dependency",
-			"de": "Adapter für BK215 (SunEnergy XT) Geräte ohne Cloud"
-		},
-		"descLang": {
-			"en": "Local TCP adapter for BK215 (SunEnergy XT) devices without cloud dependency.",
-			"de": "Lokaler TCP Adapter für BK215 (SunEnergy XT) Geräte ohne Cloud-Abhängigkeit."
-		},
-		"authors": ["Tobias <petrasch.tobias@t-online.de>"],
-		"license": "MIT",
-		"platform": "Javascript/Node.js",
-		"mode": "daemon",
-		"icon": "admin/bk215_local.png",
-		"keywords": ["iobroker", "bk215", "battery", "energy", "tcp", "local"],
-		"extIcon": "https://raw.githubusercontent.com/saibot852/ioBroker.bk215_local/main/admin/bk215_local.png",
-		"readme": "https://github.com/saibot852/ioBroker.bk215_local/blob/main/README.md",
-		"type": "energy",
-		"connectionType": "local",
-		"dataSource": "poll"
-	},
-	"native": {
-		"host": "",
-		"port": 8000,
-		"timeout": 5000,
-		"readOnly": false,
-		"debug": false
-	},
-	"objects": [],
-	"instanceObjects": []
+  "common": {
+    "name": "bk215_local",
+    "version": "1.0.5",
+    "adminUI": {
+      "config": "json"
+    },
+    "titleLang": {
+      "en": "Adapter for BK215/BK215 Plus (SunEnergy XT)",
+      "de": "Adapter für BK215/BK215 Plus (SunEnergy XT)"
+    },
+    "desc": {
+      "en": "Local TCP adapter for BK215/BK215 Plus (SunEnergy XT) energy storage devices.",
+      "de": "Lokaler TCP Adapter für BK215/BK215 Plus (SunEnergy XT) Energiespeicher."
+    },
+    "authors": [
+      "Tobias <petrasch.tobias@t-online.de>"
+    ],
+    "license": "MIT",
+    "platform": "Javascript/Node.js",
+    "mode": "daemon",
+    "tier": 3,
+    "compact": true,
+    "enabled": true,
+    "loglevel": "info",
+    "supportCustoms": false,
+    "icon": "admin/bk215_local.png",
+    "extIcon": "https://raw.githubusercontent.com/saibot852/ioBroker.bk215_local/main/admin/bk215_local.png",
+    "readme": "https://github.com/saibot852/ioBroker.bk215_local/blob/main/README.md",
+    "keywords": [
+      "iobroker",
+      "bk215",
+      "battery",
+      "energy",
+      "tcp",
+      "local",
+      "SunenergyXT",
+      "Sunlit"
+    ],
+    "type": "energy",
+    "connectionType": "local",
+    "dataSource": "poll",
+    "materialize": true,
+    "news": {
+      "1.0.5": {
+        "en": "Fixed temperature scale handling.",
+        "de": "Temperatur-Skalierung korrigiert."
+      },
+      "1.0.4": {
+        "en": "Improved reconnect handling and connection state logic.",
+        "de": "Reconnect-Handling und Verbindungsstatus verbessert."
+      },
+      "1.0.3": {
+        "en": "Added support for extended BK215 data report 0x6060 and improved temperature decoding.",
+        "de": "Unterstützung für erweiterten BK215 Datenreport 0x6060 und verbesserte Temperaturdekodierung."
+      },
+      "1.0.2": {
+        "en": "Improved reconnect handling and parser stability. Added PV and MPPT data support.",
+        "de": "Reconnect-Handling und Parser-Stabilität verbessert. PV- und MPPT-Daten hinzugefügt."
+      },
+      "1.0.1": {
+        "en": "TCP client fixes and improved interval handling.",
+        "de": "TCP Client Fixes und stabilere Intervallverarbeitung."
+      },
+      "1.0.0": {
+        "en": "First public release.",
+        "de": "Erstes öffentliches Release."
+      }
+    },
+    "dependencies": [
+      {
+        "js-controller": ">=5.0.0"
+      }
+    ],
+    "globalDependencies": [
+      {
+        "admin": ">=6.0.0"
+      }
+    ]
+  },
+  "native": {
+    "host": "",
+    "port": 8000,
+    "timeout": 5000,
+    "readOnly": false,
+    "debug": false
+  },
+  "objects": [],
+  "instanceObjects": []
 }

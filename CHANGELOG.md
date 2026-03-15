@@ -24,3 +24,7 @@
 - fixed reconnect handling after temporary device disconnects
 - set connection state to true only after first valid data report
 - stabilized state updates and watchdog behavior
+
+## 1.0.5
+
+- fixed temperature scale handling.
