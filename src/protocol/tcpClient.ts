@@ -38,6 +38,11 @@ export type TcpClientCallbacks = {
 	 * @param msg - Parsed message from device
 	 */
 	onMessage?: (msg: DeviceMessage) => void;
+
+	/**
+	 *Called Send
+	 */
+	onSend?: (msg: DeviceMessage) => void;
 };
 
 /**
@@ -147,7 +152,7 @@ export class bk215_localTcpClient {
 	public sendHandshake(): void {
 		this.sendMessage(
 			{
-				code: MessageCode.DATA_REPORT,
+				code: MessageCode.HANDSHAKE,
 				data: {},
 			},
 			true,
@@ -176,8 +181,13 @@ export class bk215_localTcpClient {
 	 * @param crlf - Append CRLF after JSON payload
 	 */
 	public sendMessage(msg: DeviceMessage, crlf: boolean): void {
-		if (!this.socket || this.socket.destroyed || this.socket.connecting) {
+		if (!this.socket || this.socket.destroyed) {
 			return;
+		}
+
+		// 🔥 DEBUG HOOK
+		if (this.callbacks.onSend) {
+			this.callbacks.onSend(msg);
 		}
 
 		const payload = `${JSON.stringify(msg)}${crlf ? '\r\n' : ''}`;
@@ -252,7 +262,7 @@ export class bk215_localTcpClient {
  * @returns True if ACK, otherwise false
  */
 export function isAck(code: number): boolean {
-	return code === 0 || code === 0x6057;
+	return code === MessageCode.HANDSHAKE || code === MessageCode.RESPONSE_ACK;
 }
 
 /**

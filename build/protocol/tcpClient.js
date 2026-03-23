@@ -103,7 +103,7 @@ class bk215_localTcpClient {
      */
     sendHandshake() {
         this.sendMessage({
-            code: constants_1.MessageCode.DATA_REPORT,
+            code: constants_1.MessageCode.HANDSHAKE,
             data: {},
         }, true);
     }
@@ -125,8 +125,12 @@ class bk215_localTcpClient {
      * @param crlf - Append CRLF after JSON payload
      */
     sendMessage(msg, crlf) {
-        if (!this.socket || this.socket.destroyed || this.socket.connecting) {
+        if (!this.socket || this.socket.destroyed) {
             return;
+        }
+        // 🔥 DEBUG HOOK
+        if (this.callbacks.onSend) {
+            this.callbacks.onSend(msg);
         }
         const payload = `${JSON.stringify(msg)}${crlf ? '\r\n' : ''}`;
         this.socket.write(payload, 'utf8');
@@ -196,7 +200,7 @@ exports.bk215_localTcpClient = bk215_localTcpClient;
  * @returns True if ACK, otherwise false
  */
 function isAck(code) {
-    return code === 0 || code === 0x6057;
+    return code === constants_1.MessageCode.HANDSHAKE || code === constants_1.MessageCode.RESPONSE_ACK;
 }
 /**
  * Check whether a message code represents a data report.

@@ -12,26 +12,14 @@ export type Dict = Record<string, any>;
 /**
  * Device message codes (based on observed protocol).
  */
-export const MessageCode = {
-	/**
-	 * Device sends status data reports with this code.
-	 */
-	DATA_REPORT: 0x6052,
 
-	/**
-	 * Some firmwares use an alternate data report code.
-	 */
+export const MessageCode = {
+	HANDSHAKE: 0,
+	DATA_REPORT: 0x6052,
 	DATA_REPORT_ALT: 0x6053,
 	DATA_REPORT_EXT: 0x6060,
-	/**
-	 * Client command wrapper for setting values.
-	 */
-	COMMAND_SET: 0x1000,
-
-	/**
-	 * Device ACK for handshake and commands.
-	 */
-	RESPONSE_ACK: 0,
+	COMMAND_SET: 0x6056,
+	RESPONSE_ACK: 0x6057,
 } as const;
 
 /**

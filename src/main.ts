@@ -35,7 +35,7 @@ class bk215_localAdapter extends utils.Adapter {
 
 	private pending = new Map<string, PendingCmd>();
 
-	private reconnectDelayMs = 5000;
+	private reconnectDelayMs = 10000;
 	private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 	private connectInProgress = false;
 	private isShuttingDown = false;
@@ -43,6 +43,8 @@ class bk215_localAdapter extends utils.Adapter {
 	private lastReportTs = 0;
 	private reportWatchdogTimer: ReturnType<typeof setInterval> | null = null;
 	private handshakeRetryTimer: ReturnType<typeof setTimeout> | null = null;
+
+	private lastSentValues = new Map<string, any>();
 
 	public constructor(options: Partial<utils.AdapterOptions> = {}) {
 		super({
@@ -121,6 +123,11 @@ class bk215_localAdapter extends utils.Adapter {
 			},
 			onMessage: (msg: DeviceMessage) => {
 				void this.handleDeviceMessage(msg);
+			},
+			onSend: msg => {
+				if (this.cfgDebug) {
+					this.log.info(`TX: ${JSON.stringify(msg)}`);
+				}
 			},
 		});
 	}
@@ -295,7 +302,8 @@ class bk215_localAdapter extends utils.Adapter {
 	private async handleDeviceMessage(msg: DeviceMessage): Promise<void> {
 		if (this.cfgDebug) {
 			await this.safeSetState('status.raw_message', JSON.stringify(msg));
-			this.log.info(JSON.stringify(msg));
+
+			this.log.info(`RX: ${JSON.stringify(msg)}`);
 		}
 
 		if (isAck(msg.code)) {
@@ -330,6 +338,9 @@ class bk215_localAdapter extends utils.Adapter {
 		for (const [field, rcRaw] of Object.entries(data)) {
 			const p = this.pending.get(field);
 			if (!p) {
+				if (this.cfgDebug) {
+					this.log.debug(`ACK for ${field} but no pending command`);
+				}
 				continue;
 			}
 
@@ -386,10 +397,20 @@ class bk215_localAdapter extends utils.Adapter {
 			return;
 		}
 
+		if (this.lastSentValues.get(field) === state.val) {
+			if (this.cfgDebug) {
+				this.log.debug(`Skip duplicate write for ${field}: ${String(state.val)}`);
+			}
+			return;
+		}
+
+		this.lastSentValues.set(field, state.val);
+
 		try {
 			const valueToSend = this.validateAndConvert(shortId, state.val);
 			await this.sendSetField(field, valueToSend);
 		} catch (e) {
+			this.lastSentValues.delete(field);
 			const msg = this.errToString(e);
 			await this.safeSetState('info.lastError', msg);
 			this.log.warn(`Write failed (${shortId}): ${msg}`);

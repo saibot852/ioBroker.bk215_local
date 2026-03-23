@@ -57,13 +57,14 @@ class bk215_localAdapter extends utils.Adapter {
         this.cfgReadOnly = false;
         this.cfgDebug = false;
         this.pending = new Map();
-        this.reconnectDelayMs = 5000;
+        this.reconnectDelayMs = 10000;
         this.reconnectTimer = null;
         this.connectInProgress = false;
         this.isShuttingDown = false;
         this.lastReportTs = 0;
         this.reportWatchdogTimer = null;
         this.handshakeRetryTimer = null;
+        this.lastSentValues = new Map();
         this.on('ready', this.onReady.bind(this));
         this.on('stateChange', this.onStateChange.bind(this));
         this.on('unload', this.onUnload.bind(this));
@@ -126,6 +127,11 @@ class bk215_localAdapter extends utils.Adapter {
             },
             onMessage: (msg) => {
                 void this.handleDeviceMessage(msg);
+            },
+            onSend: msg => {
+                if (this.cfgDebug) {
+                    this.log.info(`TX: ${JSON.stringify(msg)}`);
+                }
             },
         });
     }
@@ -274,7 +280,7 @@ class bk215_localAdapter extends utils.Adapter {
     async handleDeviceMessage(msg) {
         if (this.cfgDebug) {
             await this.safeSetState('status.raw_message', JSON.stringify(msg));
-            this.log.info(JSON.stringify(msg));
+            this.log.info(`RX: ${JSON.stringify(msg)}`);
         }
         if ((0, tcpClient_1.isAck)(msg.code)) {
             this.handleAckMessage(msg);
@@ -301,6 +307,9 @@ class bk215_localAdapter extends utils.Adapter {
         for (const [field, rcRaw] of Object.entries(data)) {
             const p = this.pending.get(field);
             if (!p) {
+                if (this.cfgDebug) {
+                    this.log.debug(`ACK for ${field} but no pending command`);
+                }
                 continue;
             }
             clearTimeout(p.timer);
@@ -346,11 +355,19 @@ class bk215_localAdapter extends utils.Adapter {
         if (!field) {
             return;
         }
+        if (this.lastSentValues.get(field) === state.val) {
+            if (this.cfgDebug) {
+                this.log.debug(`Skip duplicate write for ${field}: ${String(state.val)}`);
+            }
+            return;
+        }
+        this.lastSentValues.set(field, state.val);
         try {
             const valueToSend = this.validateAndConvert(shortId, state.val);
             await this.sendSetField(field, valueToSend);
         }
         catch (e) {
+            this.lastSentValues.delete(field);
             const msg = this.errToString(e);
             await this.safeSetState('info.lastError', msg);
             this.log.warn(`Write failed (${shortId}): ${msg}`);

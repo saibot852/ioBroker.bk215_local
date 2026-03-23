@@ -10,23 +10,12 @@ exports.Field = exports.Limits = exports.DEFAULT_TIMEOUT_SEC = exports.DEFAULT_P
  * Device message codes (based on observed protocol).
  */
 exports.MessageCode = {
-    /**
-     * Device sends status data reports with this code.
-     */
+    HANDSHAKE: 0,
     DATA_REPORT: 0x6052,
-    /**
-     * Some firmwares use an alternate data report code.
-     */
     DATA_REPORT_ALT: 0x6053,
     DATA_REPORT_EXT: 0x6060,
-    /**
-     * Client command wrapper for setting values.
-     */
-    COMMAND_SET: 0x1000,
-    /**
-     * Device ACK for handshake and commands.
-     */
-    RESPONSE_ACK: 0,
+    COMMAND_SET: 0x6056,
+    RESPONSE_ACK: 0x6057,
 };
 /**
  * Response code meaning success (device returns this for each field in ACK data).
